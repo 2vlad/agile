@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+*.epub
+*.pdf
+*.db
+.venv/
+venv/
+dist/
+build/
+.pytest_cache/
