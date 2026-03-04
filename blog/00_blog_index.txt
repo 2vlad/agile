@@ -1,0 +1,138 @@
+ИСТОЧНИК: https://agile-organizations.ru/blog
+ТЕМА: Блог Agile Организации — индекс статей
+
+========================================================
+
+СПИСОК СТАТЕЙ БЛОГА (по убыванию даты)
+
+Категории:
+- Структура
+- Стратегия
+- Процессы
+- Награды
+- HR-политики
+- Изменения
+
+========================================================
+
+СТРУКТУРА
+01. Рабочие соглашения (03.03.2026)
+    URL: https://agile-organizations.ru/tpost/zkuhazu661-rabochie-soglasheniya
+    Файл: 01_rabochie_soglasheniya.txt
+
+НАГРАДЫ
+02. Награды как инструмент оргдизайна: шесть принципов, которые работают (10.02.2026)
+    URL: https://agile-organizations.ru/tpost/5005p9lz81-nagradi-kak-instrument-orgdizaina-shest
+    Файл: 02_nagrady_kak_instrument_orgdizaina.txt
+
+СТРАТЕГИЯ
+03. Как стратегический фокус превращает Карту Гипотез в компас (28.01.2026)
+    URL: https://agile-organizations.ru/tpost/psa0iy9d21-kak-strategicheskii-fokus-prevraschaet-k
+    Файл: 03_strategicheskii_fokus_karta_gipotez.txt
+
+СТРУКТУРА
+04. Когда Agile — это локальная оптимизация (27.01.2026)
+    URL: https://agile-organizations.ru/tpost/6l0as0fkk1-kogda-agile-eto-lokalnaya-optimizatsiya
+    Файл: 04_kogda_agile_lokalnaya_optimizatsiya.txt
+
+05. Три типа продуктовых групп (27.01.2026)
+    URL: https://agile-organizations.ru/tpost/v8fck7izt1-tri-tipa-produktovih-grupp
+    Файл: 05_tri_tipa_produktovyh_grupp.txt
+
+06. Насколько согласован ваш бизнес-портфель? (19.01.2026)
+    URL: https://agile-organizations.ru/tpost/osxmpcbks1-naskolko-soglasovan-vash-biznes-portfel
+    Файл: 06_soglasovan_biznes_portfel.txt
+
+07. Продвинутая Heat Map: частота и специфичность (22.12.2025)
+    URL: https://agile-organizations.ru/tpost/2y4gikssf1-prodvinutaya-heat-map-chastota-i-spetsif
+    Файл: 07_prodvinutaya_heat_map.txt
+
+НАГРАДЫ
+08. Три метрики адаптивности: сравниваем LeSS и SAFe (21.12.2025)
+    URL: https://agile-organizations.ru/tpost/o45kv8m951-tri-metriki-adaptivnosti-sravnivaem-less
+    Файл: 08_tri_metriki_adaptivnosti_less_safe.txt
+
+СТРУКТУРА
+09. Кейс проектирования продуктовой группы (12.12.2025)
+    URL: https://agile-organizations.ru/tpost/6xghot40e1-keis-proektirovaniya-produktovoi-gruppi
+    Файл: 09_keis_proektirovaniya_produktovoi_gruppy.txt
+
+10. Проверьте: подходит ли базовая структура вашей компании? (31.10.2025)
+    URL: https://agile-organizations.ru/tpost/c9j4k9ug91-proverte-podhodit-li-bazovaya-struktura
+    Файл: 10_podhodit_li_bazovaya_struktura.txt
+
+СТРАТЕГИЯ
+11. Конфликты стратегических фокусов снижают эффективность компании (09.10.2025)
+    URL: https://agile-organizations.ru/tpost/anakzvjr91-konflikti-strategicheskih-fokusov-snizha
+    Файл: 11_konflikty_strategicheskih_fokusov.txt
+
+СТРУКТУРА
+12. Четыре перспективы структурирования продуктовых групп и команд (29.09.2025)
+    URL: https://agile-organizations.ru/tpost/a1j0usrit1-chetire-perspektivi-strukturirovaniya-pr
+    Файл: 12_chetyre_perspektivy_strukturirovaniya.txt
+
+ИЗМЕНЕНИЯ
+13. Почему LeSS невозможно скрестить с SAFe (10.09.2025)
+    URL: https://agile-organizations.ru/tpost/dz0y4kpel1-pochemu-less-nevozmozhno-skrestit-s-safe
+    Файл: 13_less_nelzya_skrestit_s_safe.txt
+
+СТРУКТУРА
+14. Да, у нас продукт и… (09.09.2025)
+    URL: https://agile-organizations.ru/tpost/o1lmv23v31-da-u-nas-produkt-i
+    Файл: 14_da_u_nas_produkt.txt
+
+ИЗМЕНЕНИЯ
+15. Принципы успешных изменений и контракт для волонтеров (01.09.2025)
+    URL: https://agile-organizations.ru/tpost/0vunkkgtd1-printsipi-uspeshnih-izmenenii-i-kontrakt
+    Файл: 15_printsipy_uspeshnyh_izmenenii.txt
+
+СТРАТЕГИЯ
+16. Иерархия стратегических фокусов: как выбрать то, что определит вашу организацию (26.08.2025)
+    URL: https://agile-organizations.ru/tpost/ed4892gim1-ierarhiya-strategicheskih-fokusov-kak-vi
+    Файл: 16_ierarhiya_strategicheskih_fokusov.txt
+
+СТРУКТУРА + СТРАТЕГИЯ
+17. Традиционные и Agile-организации (18.08.2025)
+    URL: https://agile-organizations.ru/tpost/mavzv9km11-traditsionnie-i-agile-organizatsii
+    Файл: 17_traditsionnie_i_agile_organizatsii.txt
+
+СТРУКТУРА + СТРАТЕГИЯ
+18. Продуктовые группы в разных стратегических фокусах (04.08.2025)
+    URL: https://agile-organizations.ru/tpost/k6x92zc5j1-produktovie-gruppi-v-raznih-strategiches
+    Файл: 18_produktovye_gruppy_v_raznyh_fokusah.txt
+
+СТРАТЕГИЯ
+19. Воркшоп по определению стратегического фокуса для розничного банка (28.07.2025)
+    URL: https://agile-organizations.ru/tpost/lh9e7z2gn1-vorkshop-po-opredeleniyu-strategicheskog
+    Файл: 19_vorkshop_strategicheskii_fokus_bank.txt
+
+ПРОЦЕССЫ
+20. Скорость против влияния (27.07.2025)
+    URL: https://agile-organizations.ru/tpost/k96bhd64g1-skorost-protiv-vliyaniya
+    Файл: 20_skorost_protiv_vliyaniya.txt
+
+21. Семь шагов к эффективному мозговому штурму (27.07.2025)
+    URL: https://agile-organizations.ru/tpost/9j8axeyyg1-sem-shagov-k-effektivnomu-mozgovomu-shtu
+    Файл: 21_sem_shagov_mozgovoi_shturm.txt
+
+СТРАТЕГИЯ + НАГРАДЫ
+22. Продуктовые и прокси-метрики (21.07.2025)
+    URL: https://agile-organizations.ru/tpost/8dx33ispe1-produktovie-i-proksi-metriki
+    Файл: 22_produktovye_i_proksi_metriki.txt
+
+СТРУКТУРА
+23. Продукты и области ценности (27.06.2025)
+    URL: https://agile-organizations.ru/tpost/aunfevitm1-produkti-i-oblasti-tsennosti
+    Файл: 23_produkty_i_oblasti_tsennosti.txt
+
+24. От матрицы к простоте: как FMC Subsea переосмыслила организационный дизайн (29.04.2025)
+    URL: https://agile-organizations.ru/tpost/b2opubrrg1-ot-matritsi-k-prostote-kak-fmc-subsea-pe
+    Файл: 24_fmc_subsea_ot_matritsy_k_prostote.txt
+
+25. Как понять, что оптимизируют ваши Agile-команды? Практический метод (21.02.2025)
+    URL: https://agile-organizations.ru/tpost/4al67vd7a1-kak-ponyat-chto-optimiziruyut-vashi-agil
+    Файл: 25_chto_optimiziruyut_agile_komandy.txt
+
+26. Дизайн Agile-организаций: основные принципы (19.02.2025)
+    URL: https://agile-organizations.ru/tpost/lsf1i9ebj1-dizain-agile-organizatsii-osnovnie-print
+    Файл: 26_dizain_agile_organizatsii_osnovnie_printsipy.txt
