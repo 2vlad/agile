@@ -11,11 +11,13 @@ from config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 _pool: asyncpg.Pool | None = None
-_pool_lock: asyncio.Lock = asyncio.Lock()
+_pool_lock: asyncio.Lock | None = None
 
 
 async def get_pool() -> asyncpg.Pool:
-    global _pool
+    global _pool, _pool_lock
+    if _pool_lock is None:
+        _pool_lock = asyncio.Lock()
     if _pool is None:
         async with _pool_lock:
             if _pool is None:
