@@ -258,7 +258,7 @@ class RequestRepo:
                           AVG(latency_ms) as avg_latency,
                           COUNT(CASE WHEN answer IS NULL OR answer='' THEN 1 END) as errors
                    FROM requests
-                   WHERE created_at >= NOW() - $1::interval""",
-                f"{days} days",
+                   WHERE created_at >= NOW() - make_interval(days => $1)""",
+                days,
             )
             return dict(row)
