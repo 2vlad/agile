@@ -1,14 +1,14 @@
-.PHONY: index bot dev docker-up docker-down docker-build
+.PHONY: index bot docker-build docker-up docker-down docker-index
 
 index:
 	python -m indexer.main
 
+# Local dev server with hot reload
 bot:
 	uvicorn bot.main:app --host 0.0.0.0 --port 8080 --reload
 
-dev:
-	docker-compose up -d postgres
-	uvicorn bot.main:app --host 0.0.0.0 --port 8080 --reload
+docker-build:
+	docker build -t monograph-bot .
 
 docker-up:
 	docker-compose up -d
@@ -16,5 +16,5 @@ docker-up:
 docker-down:
 	docker-compose down
 
-docker-build:
-	docker-compose build
+docker-index:
+	docker-compose run --rm indexer
