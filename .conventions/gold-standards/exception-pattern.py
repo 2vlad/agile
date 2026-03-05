@@ -6,6 +6,7 @@ Dispatcher function selects handler by type/extension.
 """
 import hashlib
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 class SkippedItem(Exception):
