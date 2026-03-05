@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     database_url: str
     db_statement_cache_size: int = 0  # 0 for PgBouncer compatibility
 
+    # Webhook
+    webhook_url: str = ""
+
+    # Bot config
+    history_max: int = 20
+    history_trim_to: int = 16
+    history_ttl_seconds: int = 3600
+
     # App config
     corpus_dir: str = "./corpus"
     chunk_size: int = 1200
