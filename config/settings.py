@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     chunk_overlap: int = 200
     max_agent_iterations: int = 4
     context_radius: int = 5
+    max_search_results: int = 20
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

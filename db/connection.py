@@ -1,18 +1,25 @@
+import asyncio
+
 import asyncpg
 import ssl
 import logging
 from urllib.parse import urlparse
 
+from pgvector.asyncpg import register_vector
+
 from config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 _pool: asyncpg.Pool | None = None
+_pool_lock: asyncio.Lock = asyncio.Lock()
 
 
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
-        _pool = await _create_pool()
+        async with _pool_lock:
+            if _pool is None:
+                _pool = await _create_pool()
     return _pool
 
 
@@ -27,6 +34,7 @@ async def _create_pool() -> asyncpg.Pool:
         statement_cache_size=settings.db_statement_cache_size,
         min_size=2,
         max_size=10,
+        init=register_vector,
     )
 
 
