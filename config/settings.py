@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
 
@@ -49,3 +51,8 @@ class Settings(BaseSettings):
     @property
     def embed_query_model(self) -> str:
         return self.yc_embed_query_model or f"emb://{self.yc_folder_id}/text-search-query/latest"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()  # type: ignore[call-arg]
