@@ -77,6 +77,18 @@ class DocumentRepo:
             data.pop("ingested_at", None)
             return DocumentRecord(**data)
 
+    async def get_by_id(self, doc_id: str) -> DocumentRecord | None:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM documents WHERE doc_id = $1", doc_id
+            )
+            if row is None:
+                return None
+            data = dict(row)
+            data.pop("ingested_at", None)
+            return DocumentRecord(**data)
+
     async def update_status(
         self, doc_id: str, status: str, error: str | None = None
     ) -> None:

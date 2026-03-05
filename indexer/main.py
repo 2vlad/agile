@@ -175,17 +175,21 @@ async def main() -> None:
                 )
                 counts[status] += 1
             except SkippedDocument as exc:
-                logger.warning("Skipped %s: %s", filepath.name, exc)
                 doc_id = _make_doc_id(filepath, corpus_dir)
-                await doc_repo.upsert(DocumentRecord(
-                    doc_id=doc_id,
-                    filename=filepath.name,
-                    format=filepath.suffix.lstrip(".").lower(),
-                    title=None,
-                    content_hash="",
-                    status="skipped",
-                    error=str(exc),
-                ))
+                existing = await doc_repo.get_by_id(doc_id)
+                if existing and existing.status == "skipped":
+                    logger.info("Skipping %s (already skipped)", filepath.name)
+                else:
+                    logger.warning("Skipped %s: %s", filepath.name, exc)
+                    await doc_repo.upsert(DocumentRecord(
+                        doc_id=doc_id,
+                        filename=filepath.name,
+                        format=filepath.suffix.lstrip(".").lower(),
+                        title=None,
+                        content_hash="",
+                        status="skipped",
+                        error=str(exc),
+                    ))
                 counts["skipped"] += 1
             except Exception as exc:
                 logger.exception("Failed to process %s", filepath.name)
