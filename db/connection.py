@@ -29,12 +29,15 @@ async def _create_pool() -> asyncpg.Pool:
     settings = get_settings()
     parsed = urlparse(settings.database_url)
     use_ssl = "sslmode=require" in settings.database_url or parsed.port == 6432
-    ssl_ctx = ssl.create_default_context() if use_ssl else None
+    if use_ssl:
+        ssl_param = ssl.create_default_context()
+    else:
+        ssl_param = False  # explicitly disable SSL (asyncpg defaults to "prefer")
     # Strip sslmode from DSN — asyncpg uses the ssl parameter instead
     dsn = settings.database_url.replace("?sslmode=require", "").replace("&sslmode=require", "")
     return await asyncpg.create_pool(
         dsn,
-        ssl=ssl_ctx,
+        ssl=ssl_param,
         statement_cache_size=settings.db_statement_cache_size,
         min_size=2,
         max_size=10,
