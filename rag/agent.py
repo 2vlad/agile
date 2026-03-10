@@ -38,8 +38,8 @@ async def _execute_tool(
     name: str,
     arguments: dict[str, Any],
     ai_client: YandexAIStudio | None = None,
-) -> str:
-    """Dispatch a tool call and return its JSON-encoded result."""
+) -> tuple[str, Any]:
+    """Dispatch a tool call and return (truncated JSON string, raw result)."""
     if name == "search_corpus":
         result = await search_corpus(
             query=arguments["query"],
@@ -58,7 +58,7 @@ async def _execute_tool(
     text = json.dumps(result, ensure_ascii=False)
     if len(text) > TOOL_RESULT_MAX_CHARS:
         text = text[:TOOL_RESULT_MAX_CHARS] + "..."
-    return text
+    return text, result
 
 
 async def run_agent(
@@ -155,8 +155,9 @@ async def run_agent(
 
             logger.info("Calling tool %s with args: %s", fn_name, fn_args)
             tool_span = trace.span(name=f"tool-{fn_name}", input=fn_args) if trace else None
+            raw_result = None
             try:
-                result_text = await _execute_tool(fn_name, fn_args, ai_client=ai_client)
+                result_text, raw_result = await _execute_tool(fn_name, fn_args, ai_client=ai_client)
                 logger.info("Tool %s returned %d chars, preview: %s", fn_name, len(result_text), result_text[:300])
                 if tool_span:
                     tool_span.end(output={"chars": len(result_text)})
@@ -171,16 +172,11 @@ async def run_agent(
 
             tools_used.append({"tool": fn_name, "args": fn_args, "iteration": iteration})
 
-            # Track sources from search results
-            if fn_name == "search_corpus":
-                try:
-                    parsed = json.loads(result_text.rstrip("..."))
-                    if isinstance(parsed, list):
-                        for item in parsed:
-                            if item.get("doc_id") and item.get("doc_title"):
-                                sources[item["doc_id"]] = item["doc_title"]
-                except (json.JSONDecodeError, ValueError):
-                    pass
+            # Track sources from raw search results (before JSON truncation)
+            if fn_name == "search_corpus" and isinstance(raw_result, list):
+                for item in raw_result:
+                    if isinstance(item, dict) and item.get("doc_id") and item.get("doc_title"):
+                        sources[item["doc_id"]] = item["doc_title"]
 
             messages.append(
                 {
