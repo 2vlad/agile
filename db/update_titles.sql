@@ -31,16 +31,16 @@ UPDATE documents SET title = 'От матрицы к простоте: кейс 
 UPDATE documents SET title = 'Что оптимизируют ваши Agile-команды? — И. Павличенко' WHERE filename = '25_chto_optimiziruyut_agile_komandy.txt';
 UPDATE documents SET title = 'Дизайн Agile-организаций: основные принципы — И. Павличенко' WHERE filename = '26_dizain_agile_organizatsii_osnovnie_printsipy.txt';
 
--- Внешние статьи (LeSS, Management 3.0, Corporate Rebels)
-UPDATE documents SET title = 'Роль менеджера в LeSS — less.works' WHERE filename = '05_less_role_of_manager.txt';
-UPDATE documents SET title = 'Самоуправляемые команды в LeSS — less.works' WHERE filename = '06_less_self_managing_teams.txt';
+-- Внешние статьи (LeSS, Management 3.0, Corporate Rebels, Valve)
+UPDATE documents SET title = 'Роль менеджера в LeSS — Б. Водде, К. Ларман' WHERE filename = '05_less_role_of_manager.txt';
+UPDATE documents SET title = 'Самоуправляемые команды в LeSS — Б. Водде, К. Ларман' WHERE filename = '06_less_self_managing_teams.txt';
 UPDATE documents SET title = 'ВкусВилл: революция в российском ритейле — Corporate Rebels' WHERE filename = '07_vkusvill_corporate_rebels.txt';
 UPDATE documents SET title = 'Руководство для новых сотрудников Valve — Valve (2012)' WHERE filename = '08_valve_handbook_ru.txt';
 UPDATE documents SET title = 'Management 3.0: введение — Ю. Аппело' WHERE filename = '04_management30_learn.txt';
-UPDATE documents SET title = 'Роль коммодити-платформ в Agile — И. Павличенко' WHERE filename = '09_commodity_platforms_cao.txt';
+UPDATE documents SET title = 'Роль коммодити-платформ в Agile — Ч. Рамос' WHERE filename = '09_commodity_platforms_cao.txt';
 
--- Книги (уже с нормальными названиями, но подправим формат)
-UPDATE documents SET title = 'Creating Agile Organizations: A Systemic Approach — И. Павличенко' WHERE filename LIKE 'Creating_Agile%';
+-- Книги
+UPDATE documents SET title = 'Creating Agile Organizations — И. Павличенко, Ч. Рамос' WHERE filename LIKE 'Creating_Agile%';
 UPDATE documents SET title = 'Выпускники вузов РФ: ИТ и Digital — исследование' WHERE filename LIKE 'Выпускники%';
 UPDATE documents SET title = 'Дизайн Аджайл-организаций: конспект — И. Павличенко' WHERE filename LIKE 'Дизаин%';
 UPDATE documents SET title = 'Agile-менеджмент: лидерство и управление командами — Ю. Аппело' WHERE filename LIKE 'Менеджмент%';
