@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from config.settings import get_settings
+from observability import create_trace, flush as lf_flush
 from rag.prompts import get_system_prompt
 from rag.tools import TOOL_SCHEMAS, get_passage, search_corpus
 from yandex.ai_studio import YandexAIStudio
@@ -72,6 +73,14 @@ async def run_agent(
     settings = get_settings()
     start = time.monotonic()
 
+    # Langfuse trace for the entire agent run
+    trace = create_trace(
+        name="agent-run",
+        user_id=str(user_id),
+        metadata={"query": query[:500]},
+        tags=["rag", "agent"],
+    )
+
     if on_status:
         await on_status("🔍 Ищу в монографиях...")
 
@@ -89,18 +98,24 @@ async def run_agent(
     for iteration in range(settings.max_agent_iterations):
         logger.info("Agent iteration %d/%d for user %s", iteration + 1, settings.max_agent_iterations, user_id)
 
+        generation = trace.span(name=f"llm-iteration-{iteration+1}", input={"message_count": len(messages)}) if trace else None
         try:
             response = await ai_client.chat_completion(messages, tools=TOOL_SCHEMAS)
         except Exception:
+            if generation:
+                generation.end(output={"error": "LLM call failed"}, level="ERROR")
             logger.exception("LLM call failed on iteration %d", iteration + 1)
             raise
 
         choice = response.choices[0]
+        tool_names = [tc.function.name for tc in (choice.message.tool_calls or [])]
         logger.info(
             "LLM response: tool_calls=%s, content_preview=%s",
-            [tc.function.name for tc in (choice.message.tool_calls or [])],
+            tool_names,
             (choice.message.content or "")[:200],
         )
+        if generation:
+            generation.end(output={"tool_calls": tool_names, "content_preview": (choice.message.content or "")[:200]})
 
         if not choice.message.tool_calls:
             # Final answer — no more tool calls
@@ -109,6 +124,9 @@ async def run_agent(
             elapsed = int((time.monotonic() - start) * 1000)
             answer = _append_sources(choice.message.content or "", sources)
             logger.info("Agent finished in %dms, %d tool calls, %d sources", elapsed, len(tools_used), len(sources))
+            if trace:
+                trace.update(output={"answer_preview": answer[:300], "latency_ms": elapsed, "sources": list(sources.values())})
+                lf_flush()
             return AgentResult(
                 answer=answer,
                 tools_used=tools_used,
@@ -136,11 +154,16 @@ async def run_agent(
                     await on_status("📚 Расширяю контекст...")
 
             logger.info("Calling tool %s with args: %s", fn_name, fn_args)
+            tool_span = trace.span(name=f"tool-{fn_name}", input=fn_args) if trace else None
             try:
                 result_text = await _execute_tool(fn_name, fn_args, ai_client=ai_client)
                 logger.info("Tool %s returned %d chars, preview: %s", fn_name, len(result_text), result_text[:300])
+                if tool_span:
+                    tool_span.end(output={"chars": len(result_text)})
             except Exception as exc:
                 logger.exception("Tool %s failed: %s", fn_name, exc)
+                if tool_span:
+                    tool_span.end(output={"error": str(exc)}, level="ERROR")
                 result_text = json.dumps(
                     {"error": f"Tool {fn_name} failed, try a different query."},
                     ensure_ascii=False,
@@ -184,6 +207,9 @@ async def run_agent(
 
     elapsed = int((time.monotonic() - start) * 1000)
     answer = _append_sources(response.choices[0].message.content or "", sources)
+    if trace:
+        trace.update(output={"answer_preview": answer[:300], "latency_ms": elapsed, "sources": list(sources.values())})
+        lf_flush()
     return AgentResult(
         answer=answer,
         tools_used=tools_used,

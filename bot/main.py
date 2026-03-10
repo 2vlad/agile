@@ -27,6 +27,7 @@ from bot.handlers import (
 )
 from config.settings import get_settings
 from db.connection import close_pool, init_db
+from observability import init_langfuse, shutdown as lf_shutdown
 from yandex.ai_studio import YandexAIStudio
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     settings = get_settings()
 
+    init_langfuse()
     logger.info("Starting bot with folder_id=%s, llm_model=%s", settings.yc_folder_id, settings.llm_model)
     logger.info("DATABASE_URL host=%s", settings.database_url.split("@")[-1].split("/")[0] if "@" in settings.database_url else "?")
 
@@ -93,6 +95,7 @@ async def lifespan(app: FastAPI):
     await application.stop()
     await application.shutdown()
     await ai_client.close()
+    lf_shutdown()
     await close_pool()
     logger.info("Shutdown complete")
 

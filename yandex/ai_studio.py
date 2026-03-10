@@ -3,7 +3,11 @@ import logging
 from typing import Any
 
 import httpx
-from openai import AsyncOpenAI
+
+try:
+    from langfuse.openai import AsyncOpenAI
+except ImportError:
+    from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 

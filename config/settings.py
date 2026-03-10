@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     history_trim_to: int = 16
     history_ttl_seconds: int = 3600
 
+    # Langfuse (optional — tracing disabled if keys are empty)
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_base_url: str = "https://cloud.langfuse.com"
+
     # App config
     corpus_dir: str = "./corpus"
     chunk_size: int = 1200
