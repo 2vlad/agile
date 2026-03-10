@@ -35,30 +35,21 @@ def _get_history(user_id: int) -> list[dict]:
 
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Fetch indexed doc titles for the welcome message
-    doc_titles: list[str] = []
+    # Count indexed docs for the welcome message
+    doc_count = 0
     try:
         docs = await DocumentRepo().list_indexed()
-        doc_titles = [doc.title or doc.filename for doc in docs]
+        doc_count = len(docs)
     except Exception:
-        logger.warning("Failed to fetch doc titles for start message")
+        logger.warning("Failed to fetch doc count for start message")
 
-    sources_block = ""
-    if doc_titles:
-        sources_list = "\n".join(f"  · {t}" for t in doc_titles)
-        sources_block = (
-            f"\n📚 <b>Что у меня под капотом</b> ({len(doc_titles)} источников):\n"
-            f"{sources_list}\n"
-        )
+    count_str = f" по {doc_count} источникам" if doc_count else ""
 
     text = (
-        "Привет! 👋\n\n"
-        "Я — бот, который читал кучу книг и статей про Agile, организационный дизайн "
-        "и управление продуктом, чтобы тебе не пришлось.\n\n"
-        "Спроси меня что угодно по этим темам — я найду ответ в базе знаний, "
-        "подкреплю цитатами и постараюсь объяснить по-человечески ☕️\n"
-        f"{sources_block}\n"
-        "Просто напиши вопрос. Или /help если хочешь узнать команды."
+        f"Привет! Я бот-ассистент{count_str} об Agile, организационном дизайне и управлении продуктом.\n\n"
+        "Задай вопрос — найду ответ и подкреплю цитатами из книг и статей.\n\n"
+        "Полный список источников — /sources\n"
+        "Справка по командам — /help"
     )
     await update.effective_message.reply_text(text, parse_mode=ParseMode.HTML)
 
