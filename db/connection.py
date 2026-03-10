@@ -1,9 +1,10 @@
 import asyncio
-
-import asyncpg
 import ssl
 import logging
+from pathlib import Path
 from urllib.parse import urlparse
+
+import asyncpg
 
 from pgvector.asyncpg import register_vector
 
@@ -30,7 +31,10 @@ async def _create_pool() -> asyncpg.Pool:
     parsed = urlparse(settings.database_url)
     use_ssl = "sslmode=require" in settings.database_url or parsed.port == 6432
     if use_ssl:
-        ssl_param = ssl.create_default_context()
+        yc_ca = Path("/usr/local/share/ca-certificates/YandexInternalRootCA.crt")
+        ssl_param = ssl.create_default_context(
+            cafile=str(yc_ca) if yc_ca.exists() else None,
+        )
     else:
         ssl_param = False  # explicitly disable SSL (asyncpg defaults to "prefer")
     # Strip sslmode from DSN — asyncpg uses the ssl parameter instead

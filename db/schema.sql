@@ -1,4 +1,11 @@
-CREATE EXTENSION IF NOT EXISTS vector;
+-- pgvector: named "vector" on Railway/vanilla PG, "pgvector" on Yandex Managed PG
+DO $$
+BEGIN
+    CREATE EXTENSION IF NOT EXISTS vector;
+EXCEPTION WHEN OTHERS THEN
+    CREATE EXTENSION IF NOT EXISTS pgvector;
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS documents (
     doc_id TEXT PRIMARY KEY,
