@@ -3,6 +3,10 @@ import re
 
 def clean_html(text: str) -> str:
     """Remove markdown artifacts, keep only valid Telegram HTML tags."""
+    # Remove markdown code fences (```lang\n...\n``` or bare ```)
+    text = re.sub(r"```[a-zA-Z]*\n?", "", text)
+    # Remove any remaining stray backticks at line boundaries
+    text = re.sub(r"(?m)^`+|`+$", "", text)
     # Remove markdown headers
     text = re.sub(r"#{1,6}\s*", "", text)
     # Bold markdown **text** -> <b>text</b>
