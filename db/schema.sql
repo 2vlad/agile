@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS chunks (
     UNIQUE(doc_id, chunk_index)
 );
 
-CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+-- ivfflat index requires rows; created after indexing via:
+-- CREATE INDEX IF NOT EXISTS idx_chunks_embedding ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 CREATE INDEX IF NOT EXISTS idx_chunks_tsv ON chunks USING gin(tsv);
 CREATE INDEX IF NOT EXISTS idx_chunks_doc_id ON chunks(doc_id);
 

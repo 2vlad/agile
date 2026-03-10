@@ -205,6 +205,18 @@ async def main() -> None:
                 ))
                 counts["failed"] += 1
 
+        # Create ivfflat index now that rows exist
+        if counts["indexed"] > 0:
+            from db.connection import get_pool
+            pool = await get_pool()
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_chunks_embedding "
+                    "ON chunks USING ivfflat (embedding vector_cosine_ops) "
+                    "WITH (lists = 100)"
+                )
+            logger.info("Created ivfflat index on chunks.embedding")
+
         elapsed = time.monotonic() - start
         summary = (
             f"Indexing complete: {counts['indexed']} indexed, "
