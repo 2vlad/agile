@@ -75,7 +75,7 @@ async def run_agent(
     got_passage = False
 
     for iteration in range(settings.max_agent_iterations):
-        logger.debug("Agent iteration %d/%d", iteration + 1, settings.max_agent_iterations)
+        logger.info("Agent iteration %d/%d for user %s", iteration + 1, settings.max_agent_iterations, user_id)
 
         try:
             response = await ai_client.chat_completion(messages, tools=TOOL_SCHEMAS)
@@ -84,12 +84,18 @@ async def run_agent(
             raise
 
         choice = response.choices[0]
+        logger.info(
+            "LLM response: tool_calls=%s, content_preview=%s",
+            [tc.function.name for tc in (choice.message.tool_calls or [])],
+            (choice.message.content or "")[:200],
+        )
 
         if not choice.message.tool_calls:
             # Final answer — no more tool calls
             if on_status:
                 await on_status("✍️ Формирую ответ...")
             elapsed = int((time.monotonic() - start) * 1000)
+            logger.info("Agent finished in %dms, %d tool calls", elapsed, len(tools_used))
             return AgentResult(
                 answer=choice.message.content or "",
                 tools_used=tools_used,
@@ -115,10 +121,12 @@ async def run_agent(
                 if on_status:
                     await on_status("📚 Расширяю контекст...")
 
+            logger.info("Calling tool %s with args: %s", fn_name, fn_args)
             try:
                 result_text = await _execute_tool(fn_name, fn_args, ai_client=ai_client)
+                logger.info("Tool %s returned %d chars, preview: %s", fn_name, len(result_text), result_text[:300])
             except Exception as exc:
-                logger.warning("Tool %s failed: %s", fn_name, exc)
+                logger.exception("Tool %s failed: %s", fn_name, exc)
                 result_text = json.dumps(
                     {"error": f"Tool {fn_name} failed, try a different query."},
                     ensure_ascii=False,

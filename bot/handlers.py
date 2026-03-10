@@ -143,6 +143,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     history = _get_history(user_id)
     request_id = str(uuid.uuid4())
 
+    logger.info("User %s (%s): %s", user_id, username, query[:200])
     status_msg = await update.effective_message.reply_text("🔍 Ищу в монографиях...")
 
     async def on_status(text: str) -> None:
@@ -170,8 +171,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             doc_titles=doc_titles,
             on_status=on_status,
         )
-    except Exception:
-        logger.exception("Agent failed for user %s query: %s", user_id, query[:100])
+    except Exception as exc:
+        logger.exception("Agent failed for user %s query: %s — %s", user_id, query[:100], exc)
         try:
             await status_msg.edit_text(
                 "Произошла ошибка при обработке запроса. Попробуйте позже."
@@ -179,6 +180,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         except Exception:
             pass
         return
+
+    logger.info(
+        "Agent result for user %s: %dms, %d tools, answer_len=%d, preview=%s",
+        user_id, result.latency_ms, len(result.tools_used), len(result.answer), result.answer[:200],
+    )
 
     # Update conversation history
     history.append({"role": "user", "content": query})

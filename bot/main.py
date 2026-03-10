@@ -1,6 +1,17 @@
 import logging
+import os
 import secrets
 from contextlib import asynccontextmanager
+
+# Verbose logging for debugging — set LOG_LEVEL=INFO in production later
+_log_level = os.environ.get("LOG_LEVEL", "DEBUG").upper()
+logging.basicConfig(
+    level=getattr(logging, _log_level, logging.DEBUG),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+# Keep third-party libs at WARNING to reduce noise
+for _lib in ("httpx", "httpcore", "telegram", "asyncio", "urllib3"):
+    logging.getLogger(_lib).setLevel(logging.WARNING)
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -24,6 +35,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+
+    logger.info("Starting bot with folder_id=%s, llm_model=%s", settings.yc_folder_id, settings.llm_model)
+    logger.info("DATABASE_URL host=%s", settings.database_url.split("@")[-1].split("/")[0] if "@" in settings.database_url else "?")
 
     # Initialize database
     await init_db()
