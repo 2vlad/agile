@@ -35,11 +35,30 @@ def _get_history(user_id: int) -> list[dict]:
 
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Fetch indexed doc titles for the welcome message
+    doc_titles: list[str] = []
+    try:
+        docs = await DocumentRepo().list_indexed()
+        doc_titles = [doc.title or doc.filename for doc in docs]
+    except Exception:
+        logger.warning("Failed to fetch doc titles for start message")
+
+    sources_block = ""
+    if doc_titles:
+        sources_list = "\n".join(f"  · {t}" for t in doc_titles)
+        sources_block = (
+            f"\n📚 <b>Что у меня под капотом</b> ({len(doc_titles)} источников):\n"
+            f"{sources_list}\n"
+        )
+
     text = (
-        "<b>Добро пожаловать!</b>\n\n"
-        "Я — бот-ассистент по монографиям об Agile и организационному дизайну.\n\n"
-        "Задайте мне вопрос, и я найду ответ в базе знаний.\n\n"
-        "Используйте /help для списка команд."
+        "Привет! 👋\n\n"
+        "Я — бот, который читал кучу книг и статей про Agile, организационный дизайн "
+        "и управление продуктом, чтобы тебе не пришлось.\n\n"
+        "Спроси меня что угодно по этим темам — я найду ответ в базе знаний, "
+        "подкреплю цитатами и постараюсь объяснить по-человечески ☕️\n"
+        f"{sources_block}\n"
+        "Просто напиши вопрос. Или /help если хочешь узнать команды."
     )
     await update.effective_message.reply_text(text, parse_mode=ParseMode.HTML)
 
