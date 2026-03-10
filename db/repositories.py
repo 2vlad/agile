@@ -9,6 +9,20 @@ from db.connection import get_pool
 logger = logging.getLogger(__name__)
 
 
+def _parse_metadata(value: Any) -> dict:
+    """Safely parse metadata from asyncpg — handles dict, str, or None."""
+    if not value:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            return {}
+    return {}
+
+
 @dataclass
 class DocumentRecord:
     doc_id: str
@@ -170,7 +184,7 @@ class ChunkRepo:
                     chunk_index=r["chunk_index"],
                     total_chunks=r["total_chunks"],
                     text=r["text"],
-                    metadata=dict(r["metadata"]) if r["metadata"] else {},
+                    metadata=_parse_metadata(r["metadata"]),
                     score=float(r["score"]),
                     search_type="vector",
                 )
@@ -202,7 +216,7 @@ class ChunkRepo:
                     chunk_index=r["chunk_index"],
                     total_chunks=r["total_chunks"],
                     text=r["text"],
-                    metadata=dict(r["metadata"]) if r["metadata"] else {},
+                    metadata=_parse_metadata(r["metadata"]),
                     score=float(r["score"]),
                     search_type="fulltext",
                 )
@@ -222,7 +236,10 @@ class ChunkRepo:
                 chunk_index - radius,
                 chunk_index + radius,
             )
-            return [dict(r) for r in rows]
+            return [
+                {"chunk_index": r["chunk_index"], "text": r["text"], "metadata": _parse_metadata(r["metadata"])}
+                for r in rows
+            ]
 
 
 class RequestRepo:
