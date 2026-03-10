@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 
@@ -35,13 +36,16 @@ class YandexAIStudio:
         self._llm = AsyncOpenAI(
             api_key=api_key,
             base_url=llm_base_url,
-            default_headers={"OpenAI-Project": folder_id},
+            default_headers={
+                "OpenAI-Project": folder_id,
+                "Authorization": f"Api-Key {api_key}",
+            },
         )
 
         # httpx client for Yandex Embeddings REST API
         self._http = httpx.AsyncClient(
             headers={
-                "Authorization": f"Bearer {api_key}",
+                "Authorization": f"Api-Key {api_key}",
                 "x-folder-id": folder_id,
             },
             timeout=httpx.Timeout(30.0, connect=10.0),
@@ -54,6 +58,8 @@ class YandexAIStudio:
             self._embeddings_url,
             json={"modelUri": model_uri, "text": text},
         )
+        if resp.status_code != 200:
+            logger.error("Embedding API error %s: %s", resp.status_code, resp.text)
         resp.raise_for_status()
         embedding = resp.json()["embedding"]
         assert len(embedding) == EMBEDDING_DIM, (
@@ -69,6 +75,7 @@ class YandexAIStudio:
             results.append(embedding)
             if (i + 1) % 10 == 0:
                 logger.debug(f"Embedded {i + 1}/{len(texts)} chunks")
+                await asyncio.sleep(1.0)  # respect 10 req/s rate limit
         return results
 
     async def chat_completion(
