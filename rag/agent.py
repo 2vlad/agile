@@ -15,10 +15,21 @@ logger = logging.getLogger(__name__)
 TOOL_RESULT_MAX_CHARS = 12_000
 
 
+def _append_sources(answer: str, sources: dict[str, str]) -> str:
+    """Append a 'Sources' footer with document titles to the answer."""
+    if not sources:
+        return answer
+    lines = [f"\n\n📚 <b>Источники:</b>"]
+    for i, title in enumerate(sources.values(), 1):
+        lines.append(f"  {i}. <i>{title}</i>")
+    return answer + "\n".join(lines)
+
+
 @dataclass
 class AgentResult:
     answer: str
     tools_used: list[dict] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
     latency_ms: int = 0
 
 
@@ -72,6 +83,7 @@ async def run_agent(
     ]
 
     tools_used: list[dict] = []
+    sources: dict[str, str] = {}  # doc_id -> doc_title
     got_passage = False
 
     for iteration in range(settings.max_agent_iterations):
@@ -95,10 +107,12 @@ async def run_agent(
             if on_status:
                 await on_status("✍️ Формирую ответ...")
             elapsed = int((time.monotonic() - start) * 1000)
-            logger.info("Agent finished in %dms, %d tool calls", elapsed, len(tools_used))
+            answer = _append_sources(choice.message.content or "", sources)
+            logger.info("Agent finished in %dms, %d tool calls, %d sources", elapsed, len(tools_used), len(sources))
             return AgentResult(
-                answer=choice.message.content or "",
+                answer=answer,
                 tools_used=tools_used,
+                sources=list(sources.values()),
                 latency_ms=elapsed,
             )
 
@@ -134,6 +148,17 @@ async def run_agent(
 
             tools_used.append({"tool": fn_name, "args": fn_args, "iteration": iteration})
 
+            # Track sources from search results
+            if fn_name == "search_corpus":
+                try:
+                    parsed = json.loads(result_text.rstrip("..."))
+                    if isinstance(parsed, list):
+                        for item in parsed:
+                            if item.get("doc_id") and item.get("doc_title"):
+                                sources[item["doc_id"]] = item["doc_title"]
+                except (json.JSONDecodeError, ValueError):
+                    pass
+
             messages.append(
                 {
                     "role": "tool",
@@ -158,8 +183,10 @@ async def run_agent(
         await on_status("✍️ Формирую ответ...")
 
     elapsed = int((time.monotonic() - start) * 1000)
+    answer = _append_sources(response.choices[0].message.content or "", sources)
     return AgentResult(
-        answer=response.choices[0].message.content or "",
+        answer=answer,
         tools_used=tools_used,
+        sources=list(sources.values()),
         latency_ms=elapsed,
     )
