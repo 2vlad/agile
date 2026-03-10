@@ -20,7 +20,7 @@ def _append_sources(answer: str, sources: dict[str, str]) -> str:
     """Append a 'Sources' footer with document titles to the answer."""
     if not sources:
         return answer
-    lines = [f"\n\n📚 <b>Источники:</b>"]
+    lines = [f"\n\n<b>Источники:</b>"]
     for i, title in enumerate(sources.values(), 1):
         lines.append(f"  {i}. <i>{title}</i>")
     return answer + "\n".join(lines)
