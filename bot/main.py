@@ -78,10 +78,18 @@ async def lifespan(app: FastAPI):
     webhook_secret = hmac.new(
         settings.telegram_token.encode(), b"webhook-secret", hashlib.sha256
     ).hexdigest()
-    if settings.webhook_url:
+
+    use_polling = not settings.webhook_url
+    if use_polling:
+        # Local mode: use polling (no public URL needed)
+        await application.bot.delete_webhook(drop_pending_updates=True)
+        await application.updater.start_polling(drop_pending_updates=True)
+        logger.info("Running in POLLING mode (local)")
+    else:
+        # Cloud mode: set webhook
         webhook = f"{settings.webhook_url.rstrip('/')}/webhook"
         await application.bot.set_webhook(webhook, secret_token=webhook_secret)
-        logger.info("Webhook set to %s", webhook)
+        logger.info("Running in WEBHOOK mode: %s", webhook)
 
     app.state.bot_app = application
     app.state.webhook_secret = webhook_secret
@@ -89,7 +97,9 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    if settings.webhook_url:
+    if use_polling:
+        await application.updater.stop()
+    else:
         try:
             await application.bot.delete_webhook()
         except Exception:
