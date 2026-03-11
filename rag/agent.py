@@ -77,9 +77,6 @@ async def run_agent(
         tags=["rag", "agent"],
     )
 
-    if on_status:
-        await on_status("🔍 Ищу в монографиях...")
-
     system_prompt = get_system_prompt(doc_titles or [], max_iterations=settings.max_agent_iterations)
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": system_prompt},
@@ -89,7 +86,6 @@ async def run_agent(
 
     tools_used: list[dict] = []
     sources: dict[str, str] = {}  # doc_id -> doc_title
-    got_passage = False
 
     for iteration in range(settings.max_agent_iterations):
         logger.info("Agent iteration %d/%d for user %s", iteration + 1, settings.max_agent_iterations, user_id)
@@ -118,7 +114,7 @@ async def run_agent(
         if not choice.message.tool_calls:
             # Final answer — no more tool calls
             if on_status:
-                await on_status("✍️ Формирую ответ...")
+                await on_status("Формулирую ответ...")
             elapsed = int((time.monotonic() - start) * 1000)
             answer = _strip_sources(choice.message.content or "")
             logger.info("Agent finished in %dms, %d tool calls, %d sources", elapsed, len(tools_used), len(sources))
@@ -146,10 +142,11 @@ async def run_agent(
             except json.JSONDecodeError:
                 fn_args = {}
 
-            if fn_name == "get_passage" and not got_passage:
-                got_passage = True
-                if on_status:
-                    await on_status("📚 Расширяю контекст...")
+            if on_status:
+                if fn_name == "search_corpus":
+                    await on_status("Ищу в монографиях...")
+                elif fn_name == "get_passage":
+                    await on_status("Читаю фрагмент...")
 
             logger.info("Calling tool %s with args: %s", fn_name, fn_args)
             tool_span = trace.span(name=f"tool-{fn_name}", input=fn_args) if trace else None
@@ -197,7 +194,7 @@ async def run_agent(
         raise
 
     if on_status:
-        await on_status("✍️ Формирую ответ...")
+        await on_status("Формулирую ответ...")
 
     elapsed = int((time.monotonic() - start) * 1000)
     answer = _strip_sources(response.choices[0].message.content or "")
