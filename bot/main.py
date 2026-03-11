@@ -1,6 +1,7 @@
+import hashlib
+import hmac
 import logging
 import os
-import secrets
 from contextlib import asynccontextmanager
 
 # Verbose logging for debugging — set LOG_LEVEL=INFO in production later
@@ -73,8 +74,10 @@ async def lifespan(app: FastAPI):
     await application.initialize()
     await application.start()
 
-    # Set webhook if configured
-    webhook_secret = secrets.token_hex(32)
+    # Stable webhook secret derived from token — same across cold starts
+    webhook_secret = hmac.new(
+        settings.telegram_token.encode(), b"webhook-secret", hashlib.sha256
+    ).hexdigest()
     if settings.webhook_url:
         webhook = f"{settings.webhook_url.rstrip('/')}/webhook"
         await application.bot.set_webhook(webhook, secret_token=webhook_secret)
