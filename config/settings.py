@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     corpus_dir: str = "./corpus"
     chunk_size: int = 1200
     chunk_overlap: int = 200
-    max_agent_iterations: int = 4
+    max_agent_iterations: int = 3
     context_radius: int = 5
     max_search_results: int = 20
 

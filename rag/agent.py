@@ -17,13 +17,8 @@ TOOL_RESULT_MAX_CHARS = 12_000
 
 
 def _append_sources(answer: str, sources: dict[str, str]) -> str:
-    """Append a 'Sources' footer with document titles to the answer."""
-    if not sources:
-        return answer
-    lines = [f"\n\n<b>Источники:</b>"]
-    for i, title in enumerate(sources.values(), 1):
-        lines.append(f"  {i}. <i>{title}</i>")
-    return answer + "\n".join(lines)
+    """Sources are no longer appended — user preference."""
+    return answer
 
 
 @dataclass
@@ -99,8 +94,10 @@ async def run_agent(
         logger.info("Agent iteration %d/%d for user %s", iteration + 1, settings.max_agent_iterations, user_id)
 
         generation = trace.span(name=f"llm-iteration-{iteration+1}", input={"message_count": len(messages)}) if trace else None
+        # On last allowed iteration, stop offering tools to force a final answer
+        offer_tools = TOOL_SCHEMAS if iteration < settings.max_agent_iterations - 1 else None
         try:
-            response = await ai_client.chat_completion(messages, tools=TOOL_SCHEMAS)
+            response = await ai_client.chat_completion(messages, tools=offer_tools)
         except Exception:
             if generation:
                 generation.end(output={"error": "LLM call failed"}, level="ERROR")
