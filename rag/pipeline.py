@@ -1,0 +1,158 @@
+"""Pipeline RAG: search → single LLM call → structured answer.
+
+Simpler and faster than the ReAct agent — no tool calling needed.
+"""
+
+import json
+import logging
+import re
+import time
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass, field
+from typing import Any
+
+from config.settings import get_settings
+from observability import create_trace, flush as lf_flush
+from rag.prompts import get_system_prompt
+from rag.tools import search_corpus
+from yandex.ai_studio import YandexAIStudio
+
+logger = logging.getLogger(__name__)
+
+CONTEXT_MAX_CHARS = 12_000
+
+
+def _strip_sources(answer: str) -> str:
+    """Remove any 'Источники:' footer the LLM may generate."""
+    return re.sub(r"\n*\s*Источники:.*", "", answer, flags=re.DOTALL).rstrip()
+
+
+@dataclass
+class PipelineResult:
+    answer: str
+    sources: list[str] = field(default_factory=list)
+    chunks_found: int = 0
+    latency_ms: int = 0
+
+
+def _format_context(search_results: list[dict]) -> str:
+    """Format search results into a context block for the LLM."""
+    if not search_results:
+        return "(ничего не найдено)"
+
+    parts: list[str] = []
+    total = 0
+    for i, r in enumerate(search_results, 1):
+        text = r.get("expanded_text") or r.get("text", "")
+        chunk = f"[Фрагмент {i}]\n{text}"
+        if total + len(chunk) > CONTEXT_MAX_CHARS:
+            break
+        parts.append(chunk)
+        total += len(chunk)
+    return "\n\n---\n\n".join(parts)
+
+
+async def run_pipeline(
+    query: str,
+    user_id: int,
+    history: list[dict],
+    ai_client: YandexAIStudio,
+    doc_titles: list[str] | None = None,
+    on_status: Callable[[str], Awaitable[None]] | None = None,
+) -> PipelineResult:
+    """Run pipeline RAG: search corpus, then generate answer in one LLM call."""
+    settings = get_settings()
+    start = time.monotonic()
+
+    trace = create_trace(
+        name="pipeline-rag",
+        user_id=str(user_id),
+        metadata={"query": query[:500]},
+        tags=["rag", "pipeline"],
+    )
+
+    # Step 1: Search
+    if on_status:
+        await on_status("\U0001f50d Ищу в монографиях...")
+
+    search_span = trace.span(name="search", input={"query": query}) if trace else None
+    try:
+        search_results = await search_corpus(
+            query=query,
+            n_results=settings.max_search_results,
+            ai_client=ai_client,
+        )
+        if search_span:
+            search_span.end(output={"count": len(search_results)})
+    except Exception:
+        if search_span:
+            search_span.end(output={"error": "search failed"}, level="ERROR")
+        logger.exception("Search failed for user %s", user_id)
+        raise
+
+    logger.info("Search returned %d results for user %s", len(search_results), user_id)
+
+    # Track sources
+    sources: dict[str, str] = {}
+    for item in search_results:
+        if isinstance(item, dict) and item.get("doc_id") and item.get("doc_title"):
+            sources[item["doc_id"]] = item["doc_title"]
+
+    # Step 2: Build prompt with context
+    if on_status:
+        await on_status("\U0001f4ac Формулирую ответ...")
+
+    context_block = _format_context(search_results)
+    system_prompt = get_system_prompt(doc_titles or [])
+
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": system_prompt},
+        *history,
+        {
+            "role": "user",
+            "content": (
+                f"{query}\n\n"
+                f"---\nНайденные фрагменты из базы знаний:\n\n{context_block}"
+            ),
+        },
+    ]
+
+    # Step 3: Generate answer (single LLM call, no tools)
+    gen_span = trace.span(name="llm-generate", input={"message_count": len(messages), "context_chars": len(context_block)}) if trace else None
+    try:
+        response = await ai_client.chat_completion(
+            messages=messages,
+            tools=None,
+            max_tokens=4000,
+        )
+        if gen_span:
+            gen_span.end(output={"content_preview": (response.choices[0].message.content or "")[:300]})
+    except Exception:
+        if gen_span:
+            gen_span.end(output={"error": "LLM call failed"}, level="ERROR")
+        logger.exception("LLM call failed for user %s", user_id)
+        raise
+
+    elapsed = int((time.monotonic() - start) * 1000)
+    answer = _strip_sources(response.choices[0].message.content or "")
+
+    logger.info(
+        "Pipeline finished in %dms, %d chunks, %d sources, answer_len=%d",
+        elapsed, len(search_results), len(sources), len(answer),
+    )
+
+    if trace:
+        trace.update(output={
+            "answer_preview": answer[:300],
+            "latency_ms": elapsed,
+            "sources": list(sources.values()),
+            "chunks_found": len(search_results),
+        })
+        lf_flush()
+
+    return PipelineResult(
+        answer=answer,
+        sources=list(sources.values()),
+        chunks_found=len(search_results),
+        latency_ms=elapsed,
+    )

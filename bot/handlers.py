@@ -9,7 +9,7 @@ from telegram.ext import ContextTypes
 from bot.telegram_utils import clean_html, escape_html, split_html_message
 from config.settings import get_settings
 from db.repositories import DocumentRepo, RequestRepo
-from rag.agent import run_agent
+from rag.pipeline import run_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +154,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         logger.warning("Failed to fetch doc titles for system prompt")
 
     try:
-        result = await run_agent(
+        result = await run_pipeline(
             query=query,
             user_id=user_id,
             history=history,
@@ -163,7 +163,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             on_status=on_status,
         )
     except Exception as exc:
-        logger.exception("Agent failed for user %s query: %s — %s", user_id, query[:100], exc)
+        logger.exception("Pipeline failed for user %s query: %s — %s", user_id, query[:100], exc)
         try:
             await status_msg.edit_text(
                 "Произошла ошибка при обработке запроса. Попробуйте позже."
@@ -173,8 +173,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
 
     logger.info(
-        "Agent result for user %s: %dms, %d tools, answer_len=%d, preview=%s",
-        user_id, result.latency_ms, len(result.tools_used), len(result.answer), result.answer[:200],
+        "Pipeline result for user %s: %dms, %d chunks, answer_len=%d, preview=%s",
+        user_id, result.latency_ms, result.chunks_found, len(result.answer), result.answer[:200],
     )
 
     # Update conversation history
@@ -213,7 +213,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             query=query,
             answer=result.answer,
             latency_ms=result.latency_ms,
-            tools_used=result.tools_used,
+            tools_used=[],
         )
     except Exception:
         logger.exception("Failed to log request %s", request_id)
