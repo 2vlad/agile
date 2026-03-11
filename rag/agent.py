@@ -114,7 +114,7 @@ async def run_agent(
         if not choice.message.tool_calls:
             # Final answer — no more tool calls
             if on_status:
-                await on_status("Формулирую ответ...")
+                await on_status("\U0001f4ac Формулирую ответ...")
             elapsed = int((time.monotonic() - start) * 1000)
             answer = _strip_sources(choice.message.content or "")
             logger.info("Agent finished in %dms, %d tool calls, %d sources", elapsed, len(tools_used), len(sources))
@@ -144,9 +144,9 @@ async def run_agent(
 
             if on_status:
                 if fn_name == "search_corpus":
-                    await on_status("Ищу в монографиях...")
+                    await on_status("\U0001f50d Ищу в монографиях...")
                 elif fn_name == "get_passage":
-                    await on_status("Читаю фрагмент...")
+                    await on_status("\U0001f4ac Читаю фрагмент...")
 
             logger.info("Calling tool %s with args: %s", fn_name, fn_args)
             tool_span = trace.span(name=f"tool-{fn_name}", input=fn_args) if trace else None
@@ -194,7 +194,7 @@ async def run_agent(
         raise
 
     if on_status:
-        await on_status("Формулирую ответ...")
+        await on_status("\U0001f4ac Формулирую ответ...")
 
     elapsed = int((time.monotonic() - start) * 1000)
     answer = _strip_sources(response.choices[0].message.content or "")

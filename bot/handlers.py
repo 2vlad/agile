@@ -135,7 +135,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     request_id = str(uuid.uuid4())
 
     logger.info("User %s (%s): %s", user_id, username, query[:200])
-    status_msg = await update.effective_message.reply_text("Думаю...")
+    status_msg = await update.effective_message.reply_text("\U0001f4ac Думаю...")
 
     async def on_status(text: str) -> None:
         try:
