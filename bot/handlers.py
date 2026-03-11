@@ -1,6 +1,8 @@
 import logging
+import tempfile
 import time
 import uuid
+from pathlib import Path
 
 from telegram import Update
 from telegram.constants import ParseMode
@@ -9,6 +11,8 @@ from telegram.ext import ContextTypes
 from bot.telegram_utils import clean_html, escape_html, split_html_message
 from config.settings import get_settings
 from db.repositories import DocumentRepo, RequestRepo
+from indexer.ingest import ingest_file
+from indexer.parsers import SUPPORTED_EXTENSIONS
 from rag.pipeline import run_pipeline
 
 logger = logging.getLogger(__name__)
@@ -55,12 +59,15 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 
 async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    supported = ", ".join(sorted(SUPPORTED_EXTENSIONS))
     text = (
         "<b>Как пользоваться ботом</b>\n\n"
         "Просто отправьте вопрос текстом, например:\n"
         "- <i>Что такое Scrum of Scrums?</i>\n"
         "- <i>Как организовать кросс-функциональные команды?</i>\n"
         "- <i>Какие метрики использовать для оценки agility?</i>\n\n"
+        "<b>Загрузка документов:</b>\n"
+        f"Отправьте файл ({supported}) — он будет проиндексирован и добавлен в базу знаний.\n\n"
         "<b>Команды:</b>\n"
         "/start — приветствие\n"
         "/help — эта справка\n"
@@ -217,3 +224,68 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
     except Exception:
         logger.exception("Failed to log request %s", request_id)
+
+
+async def document_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle uploaded documents — index them into the corpus."""
+    doc = update.effective_message.document
+    if not doc:
+        return
+
+    filename = doc.file_name or "unknown"
+    ext = Path(filename).suffix.lower()
+    user_id = update.effective_user.id
+    username = update.effective_user.username
+
+    if ext not in SUPPORTED_EXTENSIONS:
+        supported = ", ".join(sorted(SUPPORTED_EXTENSIONS))
+        await update.effective_message.reply_text(
+            f"Формат {ext} не поддерживается.\n\nПоддерживаемые: {supported}"
+        )
+        return
+
+    logger.info("User %s (%s) uploaded file: %s (%d bytes)", user_id, username, filename, doc.file_size or 0)
+    status_msg = await update.effective_message.reply_text(
+        f"\U0001f4c4 Обрабатываю {escape_html(filename)}...",
+        parse_mode=ParseMode.HTML,
+    )
+
+    ai_client = context.bot_data["ai_client"]
+
+    try:
+        tg_file = await doc.get_file()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            filepath = Path(tmpdir) / filename
+            await tg_file.download_to_drive(str(filepath))
+
+            try:
+                await status_msg.edit_text(
+                    f"\U0001f4c4 Индексирую {escape_html(filename)}...",
+                    parse_mode=ParseMode.HTML,
+                )
+            except Exception:
+                pass
+
+            status, title, chunk_count = await ingest_file(filepath, ai_client)
+
+        if status == "indexed":
+            await status_msg.edit_text(
+                f"Проиндексировано: <b>{escape_html(title)}</b> ({chunk_count} фрагментов)",
+                parse_mode=ParseMode.HTML,
+            )
+        elif status == "skipped":
+            await status_msg.edit_text(
+                f"<b>{escape_html(title)}</b> — уже в базе, пропущено.",
+                parse_mode=ParseMode.HTML,
+            )
+
+    except Exception as exc:
+        logger.exception("Failed to index file %s from user %s: %s", filename, user_id, exc)
+        try:
+            await status_msg.edit_text(
+                f"Не удалось обработать {escape_html(filename)}. Проверьте формат файла.",
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception:
+            pass

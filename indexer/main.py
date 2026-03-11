@@ -15,19 +15,12 @@ from pathlib import Path
 
 from config.settings import get_settings
 from db.connection import close_pool, init_db
-from db.repositories import ChunkRecord, ChunkRepo, DocumentRecord, DocumentRepo
-from indexer.chunker import chunk_text
-from indexer.parsers import ParsedDocument, SkippedDocument, parse_file
+from db.repositories import DocumentRecord, DocumentRepo
+from indexer.ingest import ingest_file, make_doc_id
+from indexer.parsers import SUPPORTED_EXTENSIONS, SkippedDocument
 from yandex.ai_studio import YandexAIStudio
 
 logger = logging.getLogger(__name__)
-
-SUPPORTED_EXTENSIONS = {".pdf", ".txt", ".epub"}
-
-
-def _make_doc_id(filepath: Path, corpus_dir: Path) -> str:
-    rel = filepath.relative_to(corpus_dir)
-    return hashlib.sha256(str(rel).encode()).hexdigest()[:16]
 
 
 def _discover_files(corpus_dir: Path) -> list[Path]:
@@ -38,94 +31,6 @@ def _discover_files(corpus_dir: Path) -> list[Path]:
     ]
     files.sort(key=lambda p: p.name)
     return files
-
-
-async def _process_file(
-    filepath: Path,
-    corpus_dir: Path,
-    doc_repo: DocumentRepo,
-    chunk_repo: ChunkRepo,
-    ai: YandexAIStudio,
-) -> str:
-    """Process a single file through the full pipeline.
-
-    Returns status string: 'indexed', 'skipped', or 'failed'.
-    """
-    doc_id = _make_doc_id(filepath, corpus_dir)
-
-    # Parse
-    parsed: ParsedDocument = parse_file(filepath)
-
-    # Idempotency check
-    existing = await doc_repo.get_by_hash(parsed.content_hash)
-    if existing and existing.status in ("indexed", "skipped"):
-        logger.info("Skipping %s (already %s)", filepath.name, existing.status)
-        return "skipped"
-
-    # Chunk
-    settings = get_settings()
-    chunks = chunk_text(
-        parsed.text,
-        chunk_size=settings.chunk_size,
-        overlap=settings.chunk_overlap,
-        doc_metadata={"filename": parsed.filename, "title": parsed.title},
-    )
-
-    if not chunks:
-        logger.warning("No chunks produced for %s, marking skipped", filepath.name)
-        await doc_repo.upsert(DocumentRecord(
-            doc_id=doc_id,
-            filename=parsed.filename,
-            format=parsed.format,
-            title=parsed.title,
-            content_hash=parsed.content_hash,
-            status="skipped",
-            error="No chunks produced",
-        ))
-        return "skipped"
-
-    # Embed
-    chunk_texts = [c.text for c in chunks]
-    embeddings = await ai.get_doc_embeddings_batch(chunk_texts)
-
-    if len(embeddings) != len(chunks):
-        raise RuntimeError(
-            f"Embedding count mismatch for {filepath.name}: "
-            f"got {len(embeddings)} embeddings for {len(chunks)} chunks"
-        )
-
-    # Build ChunkRecords
-    total_chunks = len(chunks)
-    chunk_records = [
-        ChunkRecord(
-            chunk_id=f"{doc_id}_{c.chunk_index:04d}",
-            doc_id=doc_id,
-            chunk_index=c.chunk_index,
-            total_chunks=total_chunks,
-            text=c.text,
-            metadata=c.metadata,
-            embedding=embeddings[i],
-        )
-        for i, c in enumerate(chunks)
-    ]
-
-    # Store document + chunks (delete stale chunks first for clean re-index)
-    await doc_repo.upsert(DocumentRecord(
-        doc_id=doc_id,
-        filename=parsed.filename,
-        format=parsed.format,
-        title=parsed.title,
-        content_hash=parsed.content_hash,
-        status="indexed",
-    ))
-    await chunk_repo.delete_by_doc(doc_id)
-    await chunk_repo.bulk_insert(chunk_records)
-
-    logger.info(
-        "Indexed %s: %d chunks, doc_id=%s",
-        filepath.name, total_chunks, doc_id,
-    )
-    return "indexed"
 
 
 async def main() -> None:
@@ -162,7 +67,6 @@ async def main() -> None:
     )
 
     doc_repo = DocumentRepo()
-    chunk_repo = ChunkRepo()
 
     counts = {"indexed": 0, "skipped": 0, "failed": 0}
     start = time.monotonic()
@@ -170,30 +74,24 @@ async def main() -> None:
     try:
         for filepath in files:
             try:
-                status = await _process_file(
-                    filepath, corpus_dir, doc_repo, chunk_repo, ai,
-                )
+                status, title, chunk_count = await ingest_file(filepath, ai)
                 counts[status] += 1
             except SkippedDocument as exc:
-                doc_id = _make_doc_id(filepath, corpus_dir)
-                existing = await doc_repo.get_by_id(doc_id)
-                if existing and existing.status == "skipped":
-                    logger.info("Skipping %s (already skipped)", filepath.name)
-                else:
-                    logger.warning("Skipped %s: %s", filepath.name, exc)
-                    await doc_repo.upsert(DocumentRecord(
-                        doc_id=doc_id,
-                        filename=filepath.name,
-                        format=filepath.suffix.lstrip(".").lower(),
-                        title=None,
-                        content_hash="",
-                        status="skipped",
-                        error=str(exc),
-                    ))
+                doc_id = make_doc_id(filepath)
+                logger.warning("Skipped %s: %s", filepath.name, exc)
+                await doc_repo.upsert(DocumentRecord(
+                    doc_id=doc_id,
+                    filename=filepath.name,
+                    format=filepath.suffix.lstrip(".").lower(),
+                    title=None,
+                    content_hash="",
+                    status="skipped",
+                    error=str(exc),
+                ))
                 counts["skipped"] += 1
-            except Exception as exc:
+            except Exception:
                 logger.exception("Failed to process %s", filepath.name)
-                doc_id = _make_doc_id(filepath, corpus_dir)
+                doc_id = make_doc_id(filepath)
                 await doc_repo.upsert(DocumentRecord(
                     doc_id=doc_id,
                     filename=filepath.name,
@@ -201,21 +99,9 @@ async def main() -> None:
                     title=None,
                     content_hash="",
                     status="failed",
-                    error=str(exc),
+                    error="processing error",
                 ))
                 counts["failed"] += 1
-
-        # Create ivfflat index now that rows exist
-        if counts["indexed"] > 0:
-            from db.connection import get_pool
-            pool = await get_pool()
-            async with pool.acquire() as conn:
-                await conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_chunks_embedding "
-                    "ON chunks USING ivfflat (embedding vector_cosine_ops) "
-                    "WITH (lists = 100)"
-                )
-            logger.info("Created ivfflat index on chunks.embedding")
 
         elapsed = time.monotonic() - start
         summary = (

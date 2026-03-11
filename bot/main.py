@@ -20,6 +20,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from bot.handlers import (
+    document_handler,
     help_handler,
     message_handler,
     sources_handler,
@@ -66,6 +67,9 @@ async def lifespan(app: FastAPI):
     application.add_handler(CommandHandler("stats", stats_handler))
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler)
+    )
+    application.add_handler(
+        MessageHandler(filters.Document.ALL, document_handler)
     )
 
     # Store ai_client in bot_data so handlers can access it

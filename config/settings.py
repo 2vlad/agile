@@ -56,7 +56,13 @@ class Settings(BaseSettings):
 
     @property
     def llm_model(self) -> str:
-        return self.yc_llm_model or f"gpt://{self.yc_folder_id}/yandexgpt/latest"
+        model = self.yc_llm_model or "yandexgpt"
+        if model.startswith("gpt://"):
+            return model
+        # short name like "deepseek-v32" → full URI
+        if "/" not in model:
+            model = f"{model}/latest"
+        return f"gpt://{self.yc_folder_id}/{model}"
 
     @property
     def embed_doc_model(self) -> str:
