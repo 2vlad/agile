@@ -16,9 +16,10 @@ logger = logging.getLogger(__name__)
 TOOL_RESULT_MAX_CHARS = 12_000
 
 
-def _append_sources(answer: str, sources: dict[str, str]) -> str:
-    """Sources are no longer appended — user preference."""
-    return answer
+def _strip_sources(answer: str) -> str:
+    """Remove any 'Источники:' footer the LLM may generate."""
+    import re
+    return re.sub(r"\n*\s*Источники:.*", "", answer, flags=re.DOTALL).rstrip()
 
 
 @dataclass
@@ -119,7 +120,7 @@ async def run_agent(
             if on_status:
                 await on_status("✍️ Формирую ответ...")
             elapsed = int((time.monotonic() - start) * 1000)
-            answer = _append_sources(choice.message.content or "", sources)
+            answer = _strip_sources(choice.message.content or "")
             logger.info("Agent finished in %dms, %d tool calls, %d sources", elapsed, len(tools_used), len(sources))
             if trace:
                 trace.update(output={"answer_preview": answer[:300], "latency_ms": elapsed, "sources": list(sources.values())})
@@ -199,7 +200,7 @@ async def run_agent(
         await on_status("✍️ Формирую ответ...")
 
     elapsed = int((time.monotonic() - start) * 1000)
-    answer = _append_sources(response.choices[0].message.content or "", sources)
+    answer = _strip_sources(response.choices[0].message.content or "")
     if trace:
         trace.update(output={"answer_preview": answer[:300], "latency_ms": elapsed, "sources": list(sources.values())})
         lf_flush()

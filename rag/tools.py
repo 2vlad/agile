@@ -76,13 +76,10 @@ async def search_corpus(
                 {
                     "chunk_id": r.chunk_id,
                     "doc_id": r.doc_id,
-                    "doc_title": r.doc_title,
                     "chunk_index": r.chunk_index,
                     "text": r.text,
                     "expanded_text": expanded_text,
-                    "metadata": r.metadata,
                     "score": r.score,
-                    "search_type": r.search_type,
                 }
             )
         return results
