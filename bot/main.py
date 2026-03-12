@@ -110,10 +110,25 @@ async def lifespan(app: FastAPI):
         await application.updater.start_polling(drop_pending_updates=True)
         logger.info("Running in POLLING mode (local)")
     else:
-        # Cloud mode: set webhook
+        # Cloud mode: set webhook (with retry for rate limits from concurrent cold starts)
+        import asyncio
+        from telegram.error import RetryAfter
+
         webhook = f"{settings.webhook_url.rstrip('/')}/webhook"
-        await application.bot.set_webhook(webhook, secret_token=webhook_secret)
-        logger.info("Running in WEBHOOK mode: %s", webhook)
+        for attempt in range(3):
+            try:
+                await application.bot.set_webhook(webhook, secret_token=webhook_secret)
+                logger.info("Running in WEBHOOK mode: %s", webhook)
+                break
+            except RetryAfter as e:
+                if attempt < 2:
+                    wait = e.retry_after + 1
+                    logger.warning("set_webhook rate-limited, retrying in %ds (attempt %d/3)", wait, attempt + 1)
+                    await asyncio.sleep(wait)
+                else:
+                    logger.warning("set_webhook rate-limited after 3 attempts, proceeding anyway (webhook likely already set)")
+            except Exception:
+                logger.warning("set_webhook failed, proceeding anyway", exc_info=True)
 
     app.state.bot_app = application
     app.state.webhook_secret = webhook_secret
