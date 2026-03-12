@@ -113,7 +113,7 @@ async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         for r in recent:
             ts = r["created_at"].strftime("%d.%m %H:%M") if r.get("created_at") else "?"
             user = escape_html(r.get("username") or "?")
-            query = escape_html((r.get("query") or "")[:80])
+            query = escape_html(r.get("query") or "")
             latency = f"{r['latency_ms']}мс" if r.get("latency_ms") else "?"
             lines.append(f"{ts} | @{user} | {latency}\n{query}")
 
