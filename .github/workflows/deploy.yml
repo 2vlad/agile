@@ -1,0 +1,64 @@
+name: Deploy to Yandex Cloud
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # manual trigger
+
+env:
+  CR_REGISTRY: crpklb64osqn44g087ms
+  CR_IMAGE: agile-bot
+  CONTAINER_NAME: agile-bot
+  SERVICE_ACCOUNT_ID: ajebbpm9rnohmogrjtnj
+  CONTAINER_URL: https://bbaepg3s35pu1fi9clmi.containers.yandexcloud.net
+  FOLDER_ID: b1g54clmnarco19prqv4
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Yandex Container Registry
+        run: echo "${{ secrets.YC_SA_KEY_JSON }}" | docker login --username json_key --password-stdin cr.yandex
+
+      - name: Build & push image
+        run: |
+          IMAGE=cr.yandex/${{ env.CR_REGISTRY }}/${{ env.CR_IMAGE }}:${{ github.sha }}
+          IMAGE_LATEST=cr.yandex/${{ env.CR_REGISTRY }}/${{ env.CR_IMAGE }}:latest
+          docker build --platform linux/amd64 \
+            --build-arg DB_CA_URL=https://storage.yandexcloud.net/cloud-certs/RootCA.pem \
+            -t "$IMAGE" -t "$IMAGE_LATEST" .
+          docker push "$IMAGE"
+          docker push "$IMAGE_LATEST"
+
+      - name: Install yc CLI
+        run: |
+          curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash -s -- -n -i /opt/yc
+          echo "/opt/yc/bin" >> $GITHUB_PATH
+
+      - name: Auth yc CLI
+        run: |
+          echo "${{ secrets.YC_SA_KEY_JSON }}" > /tmp/sa-key.json
+          yc config set service-account-key /tmp/sa-key.json
+          yc config set folder-id ${{ env.FOLDER_ID }}
+          rm /tmp/sa-key.json
+
+      - name: Deploy new revision
+        run: |
+          IMAGE=cr.yandex/${{ env.CR_REGISTRY }}/${{ env.CR_IMAGE }}:${{ github.sha }}
+          yc serverless container revision deploy \
+            --container-name "${{ env.CONTAINER_NAME }}" \
+            --image "$IMAGE" \
+            --service-account-id "${{ env.SERVICE_ACCOUNT_ID }}" \
+            --memory 512m --cores 1 --core-fraction 100 \
+            --execution-timeout 60s --concurrency 4 --min-instances 1 \
+            --environment "TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }},LLM_PROVIDER=yandex,LLM_MODEL=deepseek-v32,EMBED_PROVIDER=yandex,EMBED_DIM=256,YC_API_KEY=${{ secrets.YC_API_KEY }},YC_FOLDER_ID=${{ env.FOLDER_ID }},DATABASE_URL=${{ secrets.DATABASE_URL }},DB_STATEMENT_CACHE_SIZE=0,DB_SSL_CA=/usr/local/share/ca-certificates/CustomCA.crt,WEBHOOK_URL=${{ env.CONTAINER_URL }},AUTO_INDEX=true,CORPUS_DIR=./corpus,HISTORY_MAX=20,HISTORY_TRIM_TO=16,HISTORY_TTL_SECONDS=3600,CONTEXT_RADIUS=5,MAX_SEARCH_RESULTS=20,LANGFUSE_SECRET_KEY=${{ secrets.LANGFUSE_SECRET_KEY }},LANGFUSE_PUBLIC_KEY=${{ secrets.LANGFUSE_PUBLIC_KEY }},LANGFUSE_BASE_URL=https://cloud.langfuse.com"
+
+      - name: Allow unauthenticated invoke
+        run: yc serverless container allow-unauthenticated-invoke --name "${{ env.CONTAINER_NAME }}"
+
+      - name: Health check
+        run: |
+          sleep 8
+          curl -sf "${{ env.CONTAINER_URL }}/health" && echo " OK" || echo "::warning::Health check failed (cold start may take longer)"
