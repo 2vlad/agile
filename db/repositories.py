@@ -267,27 +267,50 @@ class RequestRepo:
                 json.dumps(tools_used),
             )
 
-    async def get_stats(self, days: int = 7) -> dict:
+    async def get_stats(self, days: int = 7, exclude_user_id: int | None = None) -> dict:
         pool = await get_pool()
         async with pool.acquire() as conn:
-            row = await conn.fetchrow(
-                """SELECT COUNT(*) as total, COUNT(DISTINCT user_id) as unique_users,
-                          AVG(latency_ms) as avg_latency,
-                          COUNT(CASE WHEN answer IS NULL OR answer='' THEN 1 END) as errors
-                   FROM requests
-                   WHERE created_at >= NOW() - make_interval(days => $1)""",
-                days,
-            )
+            if exclude_user_id is not None:
+                row = await conn.fetchrow(
+                    """SELECT COUNT(*) as total, COUNT(DISTINCT user_id) as unique_users,
+                              AVG(latency_ms) as avg_latency,
+                              COUNT(CASE WHEN answer IS NULL OR answer='' THEN 1 END) as errors
+                       FROM requests
+                       WHERE created_at >= NOW() - make_interval(days => $1)
+                         AND user_id != $2""",
+                    days,
+                    exclude_user_id,
+                )
+            else:
+                row = await conn.fetchrow(
+                    """SELECT COUNT(*) as total, COUNT(DISTINCT user_id) as unique_users,
+                              AVG(latency_ms) as avg_latency,
+                              COUNT(CASE WHEN answer IS NULL OR answer='' THEN 1 END) as errors
+                       FROM requests
+                       WHERE created_at >= NOW() - make_interval(days => $1)""",
+                    days,
+                )
             return dict(row)
 
-    async def get_recent(self, limit: int = 10) -> list[dict]:
+    async def get_recent(self, limit: int = 10, exclude_user_id: int | None = None) -> list[dict]:
         pool = await get_pool()
         async with pool.acquire() as conn:
-            rows = await conn.fetch(
-                """SELECT username, query, latency_ms, created_at
-                   FROM requests
-                   ORDER BY created_at DESC
-                   LIMIT $1""",
-                limit,
-            )
+            if exclude_user_id is not None:
+                rows = await conn.fetch(
+                    """SELECT username, query, latency_ms, created_at
+                       FROM requests
+                       WHERE user_id != $1
+                       ORDER BY created_at DESC
+                       LIMIT $2""",
+                    exclude_user_id,
+                    limit,
+                )
+            else:
+                rows = await conn.fetch(
+                    """SELECT username, query, latency_ms, created_at
+                       FROM requests
+                       ORDER BY created_at DESC
+                       LIMIT $1""",
+                    limit,
+                )
             return [dict(r) for r in rows]

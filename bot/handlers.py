@@ -86,10 +86,11 @@ async def sources_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     repo = RequestRepo()
+    caller_id = update.effective_user.id
 
     try:
-        stats = await repo.get_stats(days=7)
-        recent = await repo.get_recent(limit=10)
+        stats = await repo.get_stats(days=7, exclude_user_id=caller_id)
+        recent = await repo.get_recent(limit=10, exclude_user_id=caller_id)
     except Exception:
         logger.exception("Failed to fetch stats")
         await update.effective_message.reply_text(
