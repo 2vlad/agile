@@ -2,6 +2,7 @@ import logging
 import tempfile
 import time
 import uuid
+from datetime import timezone, timedelta
 from pathlib import Path
 
 from telegram import Update
@@ -99,7 +100,7 @@ async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     avg_latency = stats.get("avg_latency")
-    avg_str = f"{avg_latency:.0f} мс" if avg_latency is not None else "н/д"
+    avg_str = f"{avg_latency / 1000:.1f} с" if avg_latency is not None else "н/д"
 
     lines = [
         "<b>Статистика за 7 дней</b>\n",
@@ -112,10 +113,11 @@ async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if recent:
         lines.append("\n<b>Последние запросы:</b>\n")
         for r in recent:
-            ts = r["created_at"].strftime("%d.%m %H:%M") if r.get("created_at") else "?"
+            msk = timezone(timedelta(hours=3))
+            ts = r["created_at"].astimezone(msk).strftime("%d.%m %H:%M") if r.get("created_at") else "?"
             user = escape_html(r.get("username") or "?")
             query = escape_html(r.get("query") or "")
-            latency = f"{r['latency_ms']}мс" if r.get("latency_ms") else "?"
+            latency = f"{r['latency_ms'] / 1000:.1f}с" if r.get("latency_ms") else "?"
             lines.append(f"{ts} | @{user} | {latency}\n{query}")
 
     text = "\n".join(lines)
