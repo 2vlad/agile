@@ -9,6 +9,7 @@ from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 
 from bot.telegram_utils import clean_html, escape_html, split_html_message
+from config.bot_config import get_bot_config
 from config.settings import get_settings
 from db.repositories import DocumentRepo, RequestRepo
 from indexer.ingest import ingest_file
@@ -39,7 +40,7 @@ def _get_history(user_id: int) -> list[dict]:
 
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Count indexed docs for the welcome message
+    cfg = get_bot_config()
     doc_count = 0
     try:
         docs = await DocumentRepo().list_indexed()
@@ -47,33 +48,15 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     except Exception:
         logger.warning("Failed to fetch doc count for start message")
 
-    count_str = f" по {doc_count} источникам" if doc_count else ""
-
-    text = (
-        f"Привет! Я бот-ассистент{count_str} об Agile, организационном дизайне и управлении продуктом.\n\n"
-        "Задай вопрос — найду ответ и подкреплю цитатами из книг и статей.\n\n"
-        "Полный список источников — /sources\n"
-        "Справка по командам — /help"
-    )
+    text = cfg.welcome.replace("{doc_count}", str(doc_count))
     await update.effective_message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
 async def help_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    supported = ", ".join(sorted(SUPPORTED_EXTENSIONS))
-    text = (
-        "<b>Как пользоваться ботом</b>\n\n"
-        "Просто отправьте вопрос текстом, например:\n"
-        "- <i>Что такое Scrum of Scrums?</i>\n"
-        "- <i>Как организовать кросс-функциональные команды?</i>\n"
-        "- <i>Какие метрики использовать для оценки agility?</i>\n\n"
-        "<b>Загрузка документов:</b>\n"
-        f"Отправьте файл ({supported}) — он будет проиндексирован и добавлен в базу знаний.\n\n"
-        "<b>Команды:</b>\n"
-        "/start — приветствие\n"
-        "/help — эта справка\n"
-        "/sources — список проиндексированных документов\n"
-        "/stats — статистика (только для администраторов)"
-    )
+    cfg = get_bot_config()
+    formats = ", ".join(sorted(SUPPORTED_EXTENSIONS))
+    examples = "\n".join(f"- <i>{e}</i>" for e in cfg.help_examples) if cfg.help_examples else ""
+    text = cfg.help.replace("{examples}", examples).replace("{formats}", formats)
     await update.effective_message.reply_text(text, parse_mode=ParseMode.HTML)
 
 
@@ -158,7 +141,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         except Exception:
             pass  # Status update is best-effort
 
-    ai_client = context.bot_data["ai_client"]
+    llm_client = context.bot_data["llm_client"]
+    embed_client = context.bot_data["embed_client"]
 
     # Fetch doc titles for system prompt (best-effort)
     doc_titles: list[str] = []
@@ -173,7 +157,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             query=query,
             user_id=user_id,
             history=history,
-            ai_client=ai_client,
+            llm_client=llm_client,
+            embed_client=embed_client,
             doc_titles=doc_titles,
             on_status=on_status,
         )
@@ -258,7 +243,7 @@ async def document_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         parse_mode=ParseMode.HTML,
     )
 
-    ai_client = context.bot_data["ai_client"]
+    embed_client = context.bot_data["embed_client"]
 
     try:
         tg_file = await doc.get_file()
@@ -275,7 +260,7 @@ async def document_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             except Exception:
                 pass
 
-            status, title, chunk_count = await ingest_file(filepath, ai_client)
+            status, title, chunk_count = await ingest_file(filepath, embed_client)
 
         if status == "indexed":
             await status_msg.edit_text(

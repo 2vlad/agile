@@ -10,7 +10,7 @@ $$;
 CREATE TABLE IF NOT EXISTS documents (
     doc_id TEXT PRIMARY KEY,
     filename TEXT NOT NULL,
-    format TEXT NOT NULL CHECK (format IN ('pdf', 'txt', 'epub')),
+    format TEXT NOT NULL CHECK (format IN ('pdf', 'txt', 'epub', 'docx', 'pptx', 'xlsx', 'csv', 'md', 'html', 'htm')),
     title TEXT,
     ingested_at TIMESTAMPTZ DEFAULT NOW(),
     content_hash TEXT NOT NULL,

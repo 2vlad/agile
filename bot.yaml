@@ -1,0 +1,50 @@
+bot:
+  name: "Agile Expert"
+  language: ru
+
+  persona: |
+    Ты — специалист по дизайну agile-организаций.
+    Выпускник и сертифицированный тренер программы https://scrum.ru/cod.
+    Твоя задача — давать точные исчерпывающие ответы по вопросам дизайна agile-организаций.
+
+  extra_sources:
+    - "Сайт agile-organizations.ru и все источники, на которые он ссылается"
+    - "Блог agile-organizations.ru/blog и все статьи в нем"
+    - "Management 3.0: введение в менеджмент 3.0 (management30.com/learn)"
+    - "Роль менеджера (less.works/less/management/role-of-manager)"
+    - "Самоуправление команд (less.works/less/management/self-managing-teams)"
+    - "Обзор ВкусВилл — компания без миддл-менеджмента (corporate-rebels.com)"
+    - "Онбординг в Valve — Handbook for New Employees"
+    - "Коммодити-платформы (creatingagileorganizations.com)"
+
+  welcome: |
+    Привет! Я бот-ассистент по {doc_count} источникам об Agile, организационном дизайне и управлении продуктом.
+
+    Задай вопрос — найду ответ и подкреплю цитатами из книг и статей.
+
+    Полный список источников — /sources
+    Справка по командам — /help
+
+  help: |
+    <b>Как пользоваться ботом</b>
+
+    Просто отправьте вопрос текстом, например:
+    {examples}
+
+    <b>Загрузка документов:</b>
+    Отправьте файл ({formats}) — он будет проиндексирован и добавлен в базу знаний.
+
+    <b>Команды:</b>
+    /start — приветствие
+    /help — эта справка
+    /sources — список проиндексированных документов
+    /stats — статистика использования
+
+  help_examples:
+    - "Что такое Scrum of Scrums?"
+    - "Как организовать кросс-функциональные команды?"
+    - "Какие метрики использовать для оценки agility?"
+
+  style:
+    no_disclaimers: true
+    no_sources_footer: true

@@ -16,9 +16,9 @@ from pathlib import Path
 from config.settings import get_settings
 from db.connection import close_pool, init_db
 from db.repositories import DocumentRecord, DocumentRepo
+from engine.embeddings import create_embedding_client
 from indexer.ingest import ingest_file, make_doc_id
 from indexer.parsers import SUPPORTED_EXTENSIONS, SkippedDocument
-from yandex.ai_studio import YandexAIStudio
 
 logger = logging.getLogger(__name__)
 
@@ -56,14 +56,13 @@ async def main() -> None:
 
     await init_db()
 
-    ai = YandexAIStudio(
-        api_key=settings.yc_api_key,
+    embed_client = create_embedding_client(
+        provider=settings.embed_provider,
+        api_key=settings.effective_embed_api_key,
+        model=settings.embed_model,
+        dim=settings.embed_dim,
+        base_url=settings.embed_base_url,
         folder_id=settings.yc_folder_id,
-        llm_model=settings.llm_model,
-        embed_doc_model=settings.embed_doc_model,
-        embed_query_model=settings.embed_query_model,
-        llm_base_url=settings.yc_llm_base_url,
-        embeddings_url=settings.yc_embeddings_url,
     )
 
     doc_repo = DocumentRepo()
@@ -74,7 +73,7 @@ async def main() -> None:
     try:
         for filepath in files:
             try:
-                status, title, chunk_count = await ingest_file(filepath, ai)
+                status, title, chunk_count = await ingest_file(filepath, embed_client)
                 counts[status] += 1
             except SkippedDocument as exc:
                 doc_id = make_doc_id(filepath)
@@ -111,7 +110,7 @@ async def main() -> None:
         )
         logger.info(summary)
     finally:
-        await ai.close()
+        await embed_client.close()
         await close_pool()
 
 

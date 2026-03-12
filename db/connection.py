@@ -31,9 +31,12 @@ async def _create_pool() -> asyncpg.Pool:
     parsed = urlparse(settings.database_url)
     use_ssl = "sslmode=require" in settings.database_url or parsed.port == 6432
     if use_ssl:
-        yc_ca = Path("/usr/local/share/ca-certificates/YandexInternalRootCA.crt")
+        ca_path = Path(settings.db_ssl_ca) if settings.db_ssl_ca else None
+        if ca_path and not ca_path.exists():
+            logger.warning("DB SSL CA file not found: %s, using system CAs", ca_path)
+            ca_path = None
         ssl_param = ssl.create_default_context(
-            cafile=str(yc_ca) if yc_ca.exists() else None,
+            cafile=str(ca_path) if ca_path else None,
         )
     else:
         ssl_param = False  # explicitly disable SSL (asyncpg defaults to "prefer")

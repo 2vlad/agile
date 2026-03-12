@@ -14,8 +14,9 @@ from typing import Any
 from config.settings import get_settings
 from observability import create_trace, flush as lf_flush
 from rag.prompts import get_system_prompt
+from engine.embeddings.base import EmbeddingClient
+from engine.llm.base import LLMClient
 from rag.tools import search_corpus
-from yandex.ai_studio import YandexAIStudio
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,8 @@ async def run_pipeline(
     query: str,
     user_id: int,
     history: list[dict],
-    ai_client: YandexAIStudio,
+    llm_client: LLMClient,
+    embed_client: EmbeddingClient,
     doc_titles: list[str] | None = None,
     on_status: Callable[[str], Awaitable[None]] | None = None,
 ) -> PipelineResult:
@@ -80,7 +82,7 @@ async def run_pipeline(
         search_results = await search_corpus(
             query=query,
             n_results=settings.max_search_results,
-            ai_client=ai_client,
+            embed_client=embed_client,
         )
         if search_span:
             search_span.end(output={"count": len(search_results)})
@@ -120,7 +122,7 @@ async def run_pipeline(
     # Step 3: Generate answer (single LLM call, no tools)
     gen_span = trace.span(name="llm-generate", input={"message_count": len(messages), "context_chars": len(context_block)}) if trace else None
     try:
-        response = await ai_client.chat_completion(
+        response = await llm_client.chat_completion(
             messages=messages,
             tools=None,
             max_tokens=4000,

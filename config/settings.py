@@ -18,18 +18,27 @@ class Settings(BaseSettings):
             return [v]
         return v  # type: ignore[return-value]
 
-    # Yandex Cloud
-    yc_api_key: str
-    yc_folder_id: str
-    yc_llm_model: str = Field(default="")
-    yc_embed_doc_model: str = Field(default="")
-    yc_embed_query_model: str = Field(default="")
-    yc_llm_base_url: str = "https://ai.api.cloud.yandex.net/v1"
-    yc_embeddings_url: str = "https://llm.api.cloud.yandex.net/foundationModels/v1/textEmbedding"
+    # LLM provider
+    llm_provider: str = "openai"  # openai | anthropic | yandex | ollama
+    llm_api_key: str = ""
+    llm_model: str = ""
+    llm_base_url: str = ""
+
+    # Embedding provider
+    embed_provider: str = "openai"  # openai | yandex | ollama
+    embed_api_key: str = ""  # defaults to llm_api_key if empty
+    embed_model: str = ""
+    embed_dim: int = 1536
+    embed_base_url: str = ""
+
+    # Yandex-specific (only when provider=yandex)
+    yc_api_key: str = ""
+    yc_folder_id: str = ""
 
     # Database
-    database_url: str
-    db_statement_cache_size: int = 0  # 0 for PgBouncer compatibility
+    database_url: str = "postgresql://bot:bot@localhost:5432/bot"
+    db_statement_cache_size: int = 0
+    db_ssl_ca: str = ""  # path to CA cert for managed DBs
 
     # Webhook
     webhook_url: str = ""
@@ -38,8 +47,9 @@ class Settings(BaseSettings):
     history_max: int = 20
     history_trim_to: int = 16
     history_ttl_seconds: int = 3600
+    auto_index: bool = True
 
-    # Langfuse (optional — tracing disabled if keys are empty)
+    # Langfuse (optional)
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
     langfuse_base_url: str = "https://cloud.langfuse.com"
@@ -48,29 +58,28 @@ class Settings(BaseSettings):
     corpus_dir: str = "./corpus"
     chunk_size: int = 1200
     chunk_overlap: int = 200
-    max_agent_iterations: int = 3
     context_radius: int = 5
     max_search_results: int = 20
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
-    def llm_model(self) -> str:
-        model = self.yc_llm_model or "yandexgpt"
-        if model.startswith("gpt://"):
-            return model
-        # short name like "deepseek-v32" → full URI
-        if "/" not in model:
-            model = f"{model}/latest"
-        return f"gpt://{self.yc_folder_id}/{model}"
+    def effective_llm_api_key(self) -> str:
+        """Resolve LLM API key — provider-specific key or fallback."""
+        if self.llm_api_key:
+            return self.llm_api_key
+        if self.llm_provider == "yandex":
+            return self.yc_api_key
+        return self.llm_api_key
 
     @property
-    def embed_doc_model(self) -> str:
-        return self.yc_embed_doc_model or f"emb://{self.yc_folder_id}/text-search-doc/latest"
-
-    @property
-    def embed_query_model(self) -> str:
-        return self.yc_embed_query_model or f"emb://{self.yc_folder_id}/text-search-query/latest"
+    def effective_embed_api_key(self) -> str:
+        """Resolve embedding API key — fallback to LLM key."""
+        if self.embed_api_key:
+            return self.embed_api_key
+        if self.embed_provider == "yandex":
+            return self.yc_api_key
+        return self.effective_llm_api_key
 
 
 @lru_cache

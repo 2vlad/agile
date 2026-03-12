@@ -29,8 +29,10 @@ from bot.handlers import (
 )
 from config.settings import get_settings
 from db.connection import close_pool, init_db
+from engine.auto_index import auto_index_corpus
+from engine.embeddings import create_embedding_client
+from engine.llm import create_llm_client
 from observability import init_langfuse, shutdown as lf_shutdown
-from yandex.ai_studio import YandexAIStudio
 
 logger = logging.getLogger(__name__)
 
@@ -40,22 +42,39 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
 
     init_langfuse()
-    logger.info("Starting bot with folder_id=%s, llm_model=%s", settings.yc_folder_id, settings.llm_model)
+    logger.info(
+        "Starting bot: llm=%s/%s, embed=%s/%s",
+        settings.llm_provider, settings.llm_model or "default",
+        settings.embed_provider, settings.embed_model or "default",
+    )
     logger.info("DATABASE_URL host=%s", settings.database_url.split("@")[-1].split("/")[0] if "@" in settings.database_url else "?")
 
     # Initialize database
     await init_db()
 
-    # Build shared AI client
-    ai_client = YandexAIStudio(
-        api_key=settings.yc_api_key,
+    # Build provider clients via factories
+    llm_client = create_llm_client(
+        provider=settings.llm_provider,
+        api_key=settings.effective_llm_api_key,
+        model=settings.llm_model,
+        base_url=settings.llm_base_url,
         folder_id=settings.yc_folder_id,
-        llm_model=settings.llm_model,
-        embed_doc_model=settings.embed_doc_model,
-        embed_query_model=settings.embed_query_model,
-        llm_base_url=settings.yc_llm_base_url,
-        embeddings_url=settings.yc_embeddings_url,
     )
+    embed_client = create_embedding_client(
+        provider=settings.embed_provider,
+        api_key=settings.effective_embed_api_key,
+        model=settings.embed_model,
+        dim=settings.embed_dim,
+        base_url=settings.embed_base_url,
+        folder_id=settings.yc_folder_id,
+    )
+
+    # Auto-index corpus on startup
+    if settings.auto_index:
+        try:
+            await auto_index_corpus(embed_client)
+        except Exception:
+            logger.exception("Auto-index failed (non-fatal)")
 
     # Build Telegram application
     application = Application.builder().token(settings.telegram_token).build()
@@ -72,8 +91,9 @@ async def lifespan(app: FastAPI):
         MessageHandler(filters.Document.ALL, document_handler)
     )
 
-    # Store ai_client in bot_data so handlers can access it
-    application.bot_data["ai_client"] = ai_client
+    # Store clients in bot_data so handlers can access them
+    application.bot_data["llm_client"] = llm_client
+    application.bot_data["embed_client"] = embed_client
 
     await application.initialize()
     await application.start()
@@ -111,7 +131,8 @@ async def lifespan(app: FastAPI):
 
     await application.stop()
     await application.shutdown()
-    await ai_client.close()
+    await llm_client.close()
+    await embed_client.close()
     lf_shutdown()
     await close_pool()
     logger.info("Shutdown complete")

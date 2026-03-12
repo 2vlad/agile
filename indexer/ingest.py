@@ -8,7 +8,7 @@ from config.settings import get_settings
 from db.repositories import ChunkRecord, ChunkRepo, DocumentRecord, DocumentRepo
 from indexer.chunker import chunk_text
 from indexer.parsers import ParsedDocument, parse_file
-from yandex.ai_studio import YandexAIStudio
+from engine.embeddings.base import EmbeddingClient
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def make_doc_id(filepath: Path) -> str:
 
 async def ingest_file(
     filepath: Path,
-    ai_client: YandexAIStudio,
+    embed_client: EmbeddingClient,
     doc_id: str | None = None,
     on_progress: None = None,
 ) -> tuple[str, str, int]:
@@ -67,7 +67,7 @@ async def ingest_file(
 
     # Embed
     chunk_texts = [c.text for c in chunks]
-    embeddings = await ai_client.get_doc_embeddings_batch(chunk_texts)
+    embeddings = await embed_client.get_doc_embeddings_batch(chunk_texts)
 
     # Build records
     total_chunks = len(chunks)
