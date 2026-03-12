@@ -39,6 +39,7 @@ def is_enabled() -> bool:
 def create_trace(
     name: str,
     user_id: str | None = None,
+    input: dict[str, Any] | None = None,
     metadata: dict[str, Any] | None = None,
     tags: list[str] | None = None,
 ) -> Any:
@@ -49,6 +50,7 @@ def create_trace(
         return _langfuse.trace(
             name=name,
             user_id=user_id,
+            input=input or {},
             metadata=metadata or {},
             tags=tags or [],
         )

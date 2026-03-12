@@ -69,7 +69,8 @@ async def run_pipeline(
     trace = create_trace(
         name="pipeline-rag",
         user_id=str(user_id),
-        metadata={"query": query[:500]},
+        input={"query": query, "history_len": len(history)},
+        metadata={"doc_titles_count": len(doc_titles or [])},
         tags=["rag", "pipeline"],
     )
 
@@ -77,7 +78,7 @@ async def run_pipeline(
     if on_status:
         await on_status("\U0001f50d Ищу в монографиях...")
 
-    search_span = trace.span(name="search", input={"query": query}) if trace else None
+    search_span = trace.span(name="search", input={"query": query, "n_results": settings.max_search_results}) if trace else None
     try:
         search_results = await search_corpus(
             query=query,
@@ -85,7 +86,16 @@ async def run_pipeline(
             embed_client=embed_client,
         )
         if search_span:
-            search_span.end(output={"count": len(search_results)})
+            chunks_summary = [
+                {
+                    "doc_title": r.get("doc_title", ""),
+                    "chunk_index": r.get("chunk_index"),
+                    "score": round(r.get("score", 0), 4),
+                    "text_preview": (r.get("text") or "")[:200],
+                }
+                for r in search_results
+            ]
+            search_span.end(output={"count": len(search_results), "chunks": chunks_summary})
     except Exception:
         if search_span:
             search_span.end(output={"error": "search failed"}, level="ERROR")
@@ -120,15 +130,25 @@ async def run_pipeline(
     ]
 
     # Step 3: Generate answer (single LLM call, no tools)
-    gen_span = trace.span(name="llm-generate", input={"message_count": len(messages), "context_chars": len(context_block)}) if trace else None
+    gen_span = trace.span(
+        name="llm-generate",
+        input={
+            "system_prompt": system_prompt,
+            "history": history,
+            "user_message": query,
+            "context_chars": len(context_block),
+            "message_count": len(messages),
+        },
+    ) if trace else None
     try:
         response = await llm_client.chat_completion(
             messages=messages,
             tools=None,
             max_tokens=4000,
         )
+        raw_content = response.choices[0].message.content or ""
         if gen_span:
-            gen_span.end(output={"content_preview": (response.choices[0].message.content or "")[:300]})
+            gen_span.end(output={"answer": raw_content})
     except Exception:
         if gen_span:
             gen_span.end(output={"error": "LLM call failed"}, level="ERROR")
@@ -136,7 +156,7 @@ async def run_pipeline(
         raise
 
     elapsed = int((time.monotonic() - start) * 1000)
-    answer = _strip_sources(response.choices[0].message.content or "")
+    answer = _strip_sources(raw_content)
 
     logger.info(
         "Pipeline finished in %dms, %d chunks, %d sources, answer_len=%d",
@@ -145,7 +165,7 @@ async def run_pipeline(
 
     if trace:
         trace.update(output={
-            "answer_preview": answer[:300],
+            "answer": answer,
             "latency_ms": elapsed,
             "sources": list(sources.values()),
             "chunks_found": len(search_results),
