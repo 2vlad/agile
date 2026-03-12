@@ -279,3 +279,15 @@ class RequestRepo:
                 days,
             )
             return dict(row)
+
+    async def get_recent(self, limit: int = 10) -> list[dict]:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT username, query, latency_ms, created_at
+                   FROM requests
+                   ORDER BY created_at DESC
+                   LIMIT $1""",
+                limit,
+            )
+            return [dict(r) for r in rows]

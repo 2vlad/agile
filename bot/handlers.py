@@ -102,15 +102,11 @@ async def sources_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    settings = get_settings()
-    user_id = update.effective_user.id
-
-    if user_id not in settings.admin_user_ids:
-        await update.effective_message.reply_text("Нет доступа.")
-        return
+    repo = RequestRepo()
 
     try:
-        stats = await RequestRepo().get_stats(days=7)
+        stats = await repo.get_stats(days=7)
+        recent = await repo.get_recent(limit=10)
     except Exception:
         logger.exception("Failed to fetch stats")
         await update.effective_message.reply_text(
@@ -121,14 +117,26 @@ async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     avg_latency = stats.get("avg_latency")
     avg_str = f"{avg_latency:.0f} мс" if avg_latency is not None else "н/д"
 
-    text = (
-        "<b>Статистика за 7 дней</b>\n\n"
-        f"Запросов: {stats.get('total', 0)}\n"
-        f"Уникальных пользователей: {stats.get('unique_users', 0)}\n"
-        f"Средняя задержка: {avg_str}\n"
-        f"Ошибок: {stats.get('errors', 0)}"
-    )
-    await update.effective_message.reply_text(text, parse_mode=ParseMode.HTML)
+    lines = [
+        "<b>Статистика за 7 дней</b>\n",
+        f"Запросов: {stats.get('total', 0)}",
+        f"Уникальных пользователей: {stats.get('unique_users', 0)}",
+        f"Средняя задержка: {avg_str}",
+        f"Ошибок: {stats.get('errors', 0)}",
+    ]
+
+    if recent:
+        lines.append("\n<b>Последние запросы:</b>\n")
+        for r in recent:
+            ts = r["created_at"].strftime("%d.%m %H:%M") if r.get("created_at") else "?"
+            user = escape_html(r.get("username") or "?")
+            query = escape_html((r.get("query") or "")[:80])
+            latency = f"{r['latency_ms']}мс" if r.get("latency_ms") else "?"
+            lines.append(f"{ts} | @{user} | {latency}\n{query}")
+
+    text = "\n".join(lines)
+    for chunk in split_html_message(text):
+        await update.effective_message.reply_text(chunk, parse_mode=ParseMode.HTML)
 
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
