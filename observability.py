@@ -1,8 +1,7 @@
 """Langfuse observability — initializes tracing if keys are configured."""
 
 import logging
-from contextlib import contextmanager
-from typing import Any, Generator
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -36,27 +35,9 @@ def is_enabled() -> bool:
     return _enabled
 
 
-def create_trace(
-    name: str,
-    user_id: str | None = None,
-    input: dict[str, Any] | None = None,
-    metadata: dict[str, Any] | None = None,
-    tags: list[str] | None = None,
-) -> Any:
-    """Create a new Langfuse trace. Returns trace object or None."""
-    if not _enabled or not _langfuse:
-        return None
-    try:
-        return _langfuse.trace(
-            name=name,
-            user_id=user_id,
-            input=input or {},
-            metadata=metadata or {},
-            tags=tags or [],
-        )
-    except Exception:
-        logger.warning("Failed to create Langfuse trace", exc_info=True)
-        return None
+def get_langfuse():
+    """Return Langfuse client or None."""
+    return _langfuse if _enabled else None
 
 
 def flush() -> None:
