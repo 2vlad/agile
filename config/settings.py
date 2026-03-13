@@ -14,13 +14,15 @@ class Settings(BaseSettings):
     def admin_ids_list(self) -> list[int]:
         if not self.admin_user_ids:
             return []
-        return [int(x.strip()) for x in self.admin_user_ids.split(",") if x.strip()]
+        import re
+        return [int(x.strip()) for x in re.split(r"[,;]", self.admin_user_ids) if x.strip()]
 
     @property
     def admin_usernames_list(self) -> list[str]:
         if not self.admin_usernames:
             return []
-        return [x.strip().lstrip("@").lower() for x in self.admin_usernames.split(",") if x.strip()]
+        import re
+        return [x.strip().lstrip("@").lower() for x in re.split(r"[,;]", self.admin_usernames) if x.strip()]
 
     # LLM provider
     llm_provider: str = "openai"  # openai | anthropic | yandex | ollama
