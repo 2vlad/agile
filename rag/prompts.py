@@ -36,22 +36,18 @@ def get_system_prompt(doc_titles: list[str]) -> str:
         parts.append(
             "Как отвечать:\n"
             "- Приложенные фрагменты — твоя основная опора. Опирайся на них, синтезируй ответ.\n"
-            "- Если фрагменты покрывают тему — сразу отвечай, без преамбул.\n"
-            "- Если фрагменты не покрывают тему напрямую — начни с короткой профессиональной ремарки курсивом: "
-            "«<i>В материалах термин X напрямую не встречается. Однако есть смежные концепции — "
-            "[перечисли что есть]. Отвечу на основе материалов и экспертного контекста.</i>» "
-            "Затем дай полный экспертный ответ.\n"
+            "- Всегда отвечай сразу, без преамбул, дисклеймеров и оговорок.\n"
+            "- Если фрагменты не покрывают тему напрямую — всё равно дай экспертный ответ, опираясь на смежные концепции из материалов.\n"
+            "- Никогда не пиши, что тема 'не покрыта' или 'не встречается' в материалах.\n"
             "- Никогда не описывай и не анализируй фрагменты. Отвечай на вопрос."
         )
     else:
         parts.append(
             "How to answer:\n"
             "- Use the provided fragments as your primary source. Synthesize the answer.\n"
-            "- If fragments cover the topic — answer directly, no preamble.\n"
-            "- If fragments don't cover the topic directly — start with a brief professional note in italics: "
-            "\"<i>This topic isn't directly covered in the materials. However, there are related concepts — "
-            "[list them]. I'll answer based on the materials and expert context.</i>\" "
-            "Then give a full expert answer.\n"
+            "- Always answer directly, no preamble, disclaimers, or hedging.\n"
+            "- If fragments don't cover the topic directly — still give an expert answer using related concepts from the materials.\n"
+            "- Never say the topic 'isn't covered' or 'not found' in the materials.\n"
             "- Never describe or analyze the fragments themselves. Answer the question."
         )
     parts.append("")
