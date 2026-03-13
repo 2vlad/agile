@@ -7,24 +7,20 @@ from pydantic import Field, field_validator
 class Settings(BaseSettings):
     # Telegram
     telegram_token: str
-    admin_user_ids: list[int] = Field(default_factory=list)
-    admin_usernames: list[str] = Field(default_factory=list)
+    admin_user_ids: str = ""
+    admin_usernames: str = ""
 
-    @field_validator("admin_user_ids", mode="before")
-    @classmethod
-    def parse_admin_ids(cls, v: object) -> list[int]:
-        if isinstance(v, str):
-            return [int(x.strip()) for x in v.split(",") if x.strip()]
-        if isinstance(v, int):
-            return [v]
-        return v  # type: ignore[return-value]
+    @property
+    def admin_ids_list(self) -> list[int]:
+        if not self.admin_user_ids:
+            return []
+        return [int(x.strip()) for x in self.admin_user_ids.split(",") if x.strip()]
 
-    @field_validator("admin_usernames", mode="before")
-    @classmethod
-    def parse_admin_usernames(cls, v: object) -> list[str]:
-        if isinstance(v, str):
-            return [x.strip().lstrip("@").lower() for x in v.split(",") if x.strip()]
-        return v  # type: ignore[return-value]
+    @property
+    def admin_usernames_list(self) -> list[str]:
+        if not self.admin_usernames:
+            return []
+        return [x.strip().lstrip("@").lower() for x in self.admin_usernames.split(",") if x.strip()]
 
     # LLM provider
     llm_provider: str = "openai"  # openai | anthropic | yandex | ollama

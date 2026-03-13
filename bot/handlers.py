@@ -177,9 +177,9 @@ async def dump_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 def _is_admin(user_id: int, username: str | None = None) -> bool:
     settings = get_settings()
-    if user_id in settings.admin_user_ids:
+    if user_id in settings.admin_ids_list:
         return True
-    if username and username.lower() in settings.admin_usernames:
+    if username and username.lower() in settings.admin_usernames_list:
         return True
     return False
 
