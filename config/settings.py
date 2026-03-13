@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     # Telegram
     telegram_token: str
     admin_user_ids: list[int] = Field(default_factory=list)
+    admin_usernames: list[str] = Field(default_factory=list)
 
     @field_validator("admin_user_ids", mode="before")
     @classmethod
@@ -16,6 +17,13 @@ class Settings(BaseSettings):
             return [int(x.strip()) for x in v.split(",") if x.strip()]
         if isinstance(v, int):
             return [v]
+        return v  # type: ignore[return-value]
+
+    @field_validator("admin_usernames", mode="before")
+    @classmethod
+    def parse_admin_usernames(cls, v: object) -> list[str]:
+        if isinstance(v, str):
+            return [x.strip().lstrip("@").lower() for x in v.split(",") if x.strip()]
         return v  # type: ignore[return-value]
 
     # LLM provider

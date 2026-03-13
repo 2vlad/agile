@@ -175,15 +175,20 @@ async def dump_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await update.effective_message.reply_text(chunk, parse_mode=ParseMode.HTML)
 
 
-def _is_admin(user_id: int) -> bool:
+def _is_admin(user_id: int, username: str | None = None) -> bool:
     settings = get_settings()
-    return user_id in settings.admin_user_ids
+    if user_id in settings.admin_user_ids:
+        return True
+    if username and username.lower() in settings.admin_usernames:
+        return True
+    return False
 
 
 async def fix_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """View or edit custom prompt instructions. Admin only."""
     user_id = update.effective_user.id
-    if not _is_admin(user_id):
+    username = update.effective_user.username
+    if not _is_admin(user_id, username):
         await update.effective_message.reply_text("Эта команда доступна только администраторам.")
         return
 
