@@ -21,6 +21,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from bot.handlers import (
     document_handler,
+    dump_handler,
     help_handler,
     message_handler,
     sources_handler,
@@ -84,6 +85,7 @@ async def lifespan(app: FastAPI):
     application.add_handler(CommandHandler("help", help_handler))
     application.add_handler(CommandHandler("sources", sources_handler))
     application.add_handler(CommandHandler("stats", stats_handler))
+    application.add_handler(CommandHandler("dump", dump_handler))
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler)
     )

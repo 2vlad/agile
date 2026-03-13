@@ -314,3 +314,15 @@ class RequestRepo:
                     limit,
                 )
             return [dict(r) for r in rows]
+
+    async def get_recent_full(self, limit: int = 3) -> list[dict]:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT username, query, answer, latency_ms, created_at
+                   FROM requests
+                   ORDER BY created_at DESC
+                   LIMIT $1""",
+                limit,
+            )
+            return [dict(r) for r in rows]

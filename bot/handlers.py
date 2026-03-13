@@ -125,6 +125,56 @@ async def stats_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await update.effective_message.reply_text(chunk, parse_mode=ParseMode.HTML)
 
 
+async def dump_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show recent requests with full query and answer."""
+    msk = timezone(timedelta(hours=3))
+    repo = RequestRepo()
+
+    # Parse optional argument: /dump or /dump N
+    index = None
+    if context.args:
+        try:
+            index = int(context.args[0])
+        except (ValueError, IndexError):
+            pass
+
+    try:
+        recent = await repo.get_recent_full(limit=max(index or 3, 3))
+    except Exception:
+        logger.exception("Failed to fetch dump")
+        await update.effective_message.reply_text("Не удалось загрузить данные.")
+        return
+
+    if not recent:
+        await update.effective_message.reply_text("Нет запросов.")
+        return
+
+    if index is not None:
+        # /dump N — show Nth from last (1-based)
+        if index < 1 or index > len(recent):
+            await update.effective_message.reply_text(
+                f"Доступны запросы от 1 до {len(recent)}."
+            )
+            return
+        items = [recent[index - 1]]
+    else:
+        # /dump — last 3
+        items = recent[:3]
+
+    for r in items:
+        ts = r["created_at"].astimezone(msk).strftime("%d.%m %H:%M") if r.get("created_at") else "?"
+        user = escape_html(r.get("username") or "?")
+        latency = f"{r['latency_ms'] / 1000:.1f}с" if r.get("latency_ms") else "?"
+        query_text = escape_html(r.get("query") or "")
+        answer_text = clean_html(r.get("answer") or "(нет ответа)")
+
+        header = f"<b>{ts} | @{user} | {latency}</b>"
+        body = f"{header}\n\n<b>Вопрос:</b>\n{query_text}\n\n<b>Ответ:</b>\n{answer_text}"
+
+        for chunk in split_html_message(body):
+            await update.effective_message.reply_text(chunk, parse_mode=ParseMode.HTML)
+
+
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.effective_message.text
     if not query:
