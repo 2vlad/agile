@@ -15,6 +15,7 @@ from observability import get_langfuse, flush as lf_flush
 from rag.prompts import get_system_prompt
 from engine.embeddings.base import EmbeddingClient
 from engine.llm.base import LLMClient
+from db.repositories import BotSettingsRepo
 from rag.tools import search_corpus
 
 logger = logging.getLogger(__name__)
@@ -89,7 +90,8 @@ async def run_pipeline(
         await on_status("\U0001f4ac Формулирую ответ...")
 
     context_block = _format_context(search_results)
-    system_prompt = get_system_prompt(doc_titles or [])
+    custom_instructions = await BotSettingsRepo().get("custom_prompt")
+    system_prompt = get_system_prompt(doc_titles or [], custom_instructions=custom_instructions)
 
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": system_prompt},

@@ -45,3 +45,9 @@ CREATE TABLE IF NOT EXISTS requests (
     tools_used JSONB DEFAULT '[]',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS bot_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);

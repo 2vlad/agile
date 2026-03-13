@@ -6,7 +6,7 @@ def _sanitize_title(title: str) -> str:
     return safe[:200]
 
 
-def get_system_prompt(doc_titles: list[str]) -> str:
+def get_system_prompt(doc_titles: list[str], custom_instructions: str | None = None) -> str:
     """Build the system prompt from bot.yaml config + indexed doc titles."""
     cfg = get_bot_config()
 
@@ -94,5 +94,10 @@ def get_system_prompt(doc_titles: list[str]) -> str:
             style_lines.append("- Never list sources or mention document names.")
         style_lines.append("- Use HTML tags: <b>, <i>. No markdown.")
     parts.append("\n".join(style_lines))
+
+    if custom_instructions:
+        parts.append("")
+        parts.append("Дополнительные инструкции:" if cfg.language == "ru" else "Additional instructions:")
+        parts.append(custom_instructions)
 
     return "\n".join(parts)

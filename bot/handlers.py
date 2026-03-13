@@ -12,7 +12,7 @@ from telegram.ext import ContextTypes
 from bot.telegram_utils import clean_html, escape_html, split_html_message
 from config.bot_config import get_bot_config
 from config.settings import get_settings
-from db.repositories import DocumentRepo, RequestRepo
+from db.repositories import BotSettingsRepo, DocumentRepo, RequestRepo
 from indexer.ingest import ingest_file
 from indexer.parsers import SUPPORTED_EXTENSIONS
 from rag.pipeline import run_pipeline
@@ -173,6 +173,46 @@ async def dump_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
         for chunk in split_html_message(body):
             await update.effective_message.reply_text(chunk, parse_mode=ParseMode.HTML)
+
+
+def _is_admin(user_id: int) -> bool:
+    settings = get_settings()
+    return user_id in settings.admin_user_ids
+
+
+async def fix_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """View or edit custom prompt instructions. Admin only."""
+    user_id = update.effective_user.id
+    if not _is_admin(user_id):
+        await update.effective_message.reply_text("Эта команда доступна только администраторам.")
+        return
+
+    repo = BotSettingsRepo()
+    text = " ".join(context.args) if context.args else ""
+
+    if not text:
+        # /fix — show current
+        current = await repo.get("custom_prompt")
+        if current:
+            await update.effective_message.reply_text(
+                f"<b>Текущие инструкции:</b>\n\n{escape_html(current)}",
+                parse_mode=ParseMode.HTML,
+            )
+        else:
+            await update.effective_message.reply_text("Дополнительных инструкций нет.\n\n/fix &lt;текст&gt; — задать\n/fix reset — сбросить", parse_mode=ParseMode.HTML)
+        return
+
+    if text.strip().lower() == "reset":
+        await repo.delete("custom_prompt")
+        await update.effective_message.reply_text("Дополнительные инструкции сброшены.")
+        return
+
+    # /fix <text> — set new instructions
+    await repo.set("custom_prompt", text)
+    await update.effective_message.reply_text(
+        f"<b>Инструкции обновлены:</b>\n\n{escape_html(text)}",
+        parse_mode=ParseMode.HTML,
+    )
 
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

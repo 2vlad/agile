@@ -58,6 +58,31 @@ class SearchResult:
     search_type: str  # 'vector' | 'fulltext'
 
 
+class BotSettingsRepo:
+    async def get(self, key: str) -> str | None:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT value FROM bot_settings WHERE key = $1", key
+            )
+            return row["value"] if row else None
+
+    async def set(self, key: str, value: str) -> None:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """INSERT INTO bot_settings (key, value, updated_at)
+                   VALUES ($1, $2, NOW())
+                   ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()""",
+                key, value,
+            )
+
+    async def delete(self, key: str) -> None:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("DELETE FROM bot_settings WHERE key = $1", key)
+
+
 class DocumentRepo:
     async def upsert(self, doc: DocumentRecord) -> None:
         pool = await get_pool()
